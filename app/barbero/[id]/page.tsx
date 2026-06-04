@@ -206,34 +206,61 @@ export default function PanelBarbero() {
 
   return (
     <div className="w-full min-h-screen bg-[#070708] text-zinc-100 p-4 md:p-8 flex flex-col gap-6">
-      {/* Saludo y fecha */}
-      <div className="flex items-center justify-between w-full">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Hola, {barbero.nombre.split(' ')[0]}</h1>
-          <p className="text-sm text-zinc-400 capitalize mt-1">
-            {new Date().toLocaleDateString('es-AR', { 
-              weekday: 'long', 
-              day: 'numeric', 
-              month: 'long' 
-            })}
-          </p>
+      
+      {/* Sección Superior: Próximo Turno (Izquierda) y Saludo/Fecha (Derecha) */}
+      <div className="w-full flex flex-col md:flex-row md:items-start justify-between gap-4">
+        {/* Próximo Turno Destacado horizontal de lado a lado */}
+        <div className="w-full md:max-w-xs">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">PROXIMO TURNO</p>
+          <div className="flex items-baseline justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white">Juan Perez</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">Corte + Barba</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-white">09:00</p>
+              <p className="text-[10px] text-zinc-500 font-medium mt-0.5">60 min</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-7 px-3 bg-zinc-900/50 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white mt-2.5"
+            onClick={() => setSelectedTurno((turnoActual || proximoTurno) ?? null)}
+          >
+            Ver mas
+          </Button>
         </div>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="relative bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
-          onClick={() => setShowNotificaciones(true)}
-        >
-          <Bell className="h-5 w-5" />
-          {notificacionesSinLeer > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-black">
-              {notificacionesSinLeer}
-            </span>
-          )}
-        </Button>
+
+        {/* Saludo, Fecha y Campana */}
+        <div className="flex items-center justify-between md:justify-end gap-6 md:text-right ml-auto">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Hola, {barbero.nombre.split(' ')[0]}</h1>
+            <p className="text-sm text-zinc-400 capitalize mt-1">
+              {new Date().toLocaleDateString('es-AR', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long' 
+              })}
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="relative bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+            onClick={() => setShowNotificaciones(true)}
+          >
+            <Bell className="h-5 w-5" />
+            {notificacionesSinLeer > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-black">
+                {notificacionesSinLeer}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* Metricas rapidas */}
+      {/* Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         <Card className="bg-[#111113] border-zinc-800/80">
           <CardContent className="p-6 flex flex-col items-center justify-center">
@@ -261,38 +288,7 @@ export default function PanelBarbero() {
         </Card>
       </div>
 
-      {/* Seccion Proximo Turno Horizontal Fijo */}
-      {(turnoActual || proximoTurno) && (
-        <Card className="w-full bg-[#0d0d0f] border border-amber-500/20 shadow-lg shadow-amber-500/5">
-          <CardContent className="p-5 flex items-center justify-between w-full">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-amber-500 tracking-widest uppercase">PROXIMO TURNO</p>
-              <h3 className="text-xl font-bold text-white">{(turnoActual || proximoTurno)!.cliente.nombre}</h3>
-              <p className="text-xs text-zinc-400">{(turnoActual || proximoTurno)!.servicio.nombre}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-7 px-3 bg-zinc-900 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white mt-2"
-                onClick={() => setSelectedTurno(turnoActual || proximoTurno)}
-              >
-                Ver mas
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-6 text-right">
-              <div>
-                <p className="text-2xl font-bold text-white">{(turnoActual || proximoTurno)!.horaInicio}</p>
-                <p className="text-[11px] text-zinc-500 font-medium mt-0.5">{(turnoActual || proximoTurno)!.servicio.duracion} min</p>
-              </div>
-              <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 rounded font-semibold text-xs px-2.5 py-0.5 self-start">
-                {getEstadoLabel((turnoActual || proximoTurno)!.estado)}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Boton para agregar turno */}
+      {/* Botón de Registro */}
       <Button 
         className="w-full h-12 text-zinc-200 bg-[#121214] hover:bg-zinc-800 border-zinc-800 font-medium" 
         variant="outline"
@@ -301,7 +297,7 @@ export default function PanelBarbero() {
         <Plus className="mr-2 h-4 w-4" /> Registrar turno por orden de llegada
       </Button>
 
-      {/* Estructura de solapas */}
+      {/* Tabs */}
       <Tabs defaultValue="hoy" className="w-full flex flex-col gap-4">
         <TabsList className="w-full flex justify-between items-center rounded-none h-12 bg-transparent border-b border-zinc-800 p-0">
           <TabsTrigger 
@@ -588,7 +584,7 @@ export default function PanelBarbero() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: NUEVO TURNO POR ORDEN DE LLEGADA (CALCADO AL MILÍMETRO A image_6b72e1.png) */}
+      {/* MODAL: NUEVO TURNO POR ORDEN DE LLEGADA */}
       <Dialog open={showNuevoTurno} onOpenChange={setShowNuevoTurno}>
         <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md bg-[#09090b] border-zinc-800 text-white p-6">
           <DialogHeader className="border-none pb-0">
@@ -599,7 +595,6 @@ export default function PanelBarbero() {
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
-            {/* Campo 1 */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-zinc-200">Cliente existente (opcional)</Label>
               <Select 
@@ -619,7 +614,6 @@ export default function PanelBarbero() {
               </Select>
             </div>
 
-            {/* Campo 2 */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-zinc-200">Nombre del cliente</Label>
               <Input 
@@ -630,7 +624,6 @@ export default function PanelBarbero() {
               />
             </div>
 
-            {/* Campo 3 */}
             <div className="space-y-2">
               <Label className="text-xs font-bold text-zinc-200">Telefono (opcional)</Label>
               <Input 
