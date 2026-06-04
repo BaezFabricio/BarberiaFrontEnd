@@ -129,7 +129,7 @@ export default function PanelBarbero() {
     t.horaInicio > horaActual
   )
 
-  // Manejo correcto del clic en Ver más para evitar errores de compilación
+  // Clis seguro para pasar el build de TypeScript de forma definitiva
   const abrirDetalleProximoTurno = () => {
     const turnoDestacado = turnoActual || proximoTurno
     if (turnoDestacado) {
@@ -201,34 +201,7 @@ export default function PanelBarbero() {
   return (
     <div className="w-full min-h-screen bg-[#070708] text-zinc-100 p-4 md:p-8 flex flex-col gap-6">
       
-      {/* SECCIÓN 1: TARJETA PROXIMO TURNO */}
-      <Card className="bg-[#111113] border-zinc-800/80 w-full">
-        <CardContent className="p-5 flex flex-col gap-1.5">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">PROXIMO TURNO</p>
-          <div className="flex items-center justify-between mt-1">
-            <div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">Juan Perez</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">Corte + Barba</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-white tracking-tight">09:00</p>
-              <p className="text-[10px] text-zinc-500 font-medium mt-0.5">60 min</p>
-            </div>
-          </div>
-          <div className="pt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-7 px-3 bg-zinc-900 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white"
-              onClick={abrirDetalleProximoTurno}
-            >
-              Ver mas
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SECCIÓN 2: SALUDO Y FECHA (Flotando libre) */}
+      {/* SECCIÓN 1: SALUDO Y FECHA (Flotando arriba de todo) */}
       <div className="flex items-center justify-between w-full px-1">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Hola, {barbero.nombre.split(' ')[0]}</h1>
@@ -255,7 +228,7 @@ export default function PanelBarbero() {
         </Button>
       </div>
 
-      {/* SECCIÓN 3: METRICAS RAPIDAS */}
+      {/* SECCIÓN 2: CUATRO MÉTRICAS RÁPIDAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         <Card className="bg-[#111113] border-zinc-800/80">
           <CardContent className="p-6 flex flex-col items-center justify-center">
@@ -283,7 +256,40 @@ export default function PanelBarbero() {
         </Card>
       </div>
 
-      {/* Boton para agregar turno */}
+      {/* SECCIÓN 3: TARJETA PROXIMO TURNO GIGANTE (Justo abajo de las métricas) */}
+      {(turnoActual || proximoTurno) && (
+        <Card className="w-full bg-[#111113] border border-amber-500/20 shadow-lg shadow-amber-500/5">
+          <CardContent className="p-6 flex items-center justify-between w-full">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-amber-500 tracking-widest uppercase">PROXIMO TURNO</p>
+              <h3 className="text-xl font-bold text-white">{(turnoActual || proximoTurno)!.cliente.nombre}</h3>
+              <p className="text-xs text-zinc-400">{(turnoActual || proximoTurno)!.servicio.nombre}</p>
+              <div className="pt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 px-3 bg-zinc-900 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white"
+                  onClick={abrirDetalleProximoTurno}
+                >
+                  Ver mas
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6 text-right">
+              <div>
+                <p className="text-3xl font-bold text-white tracking-tight">{(turnoActual || proximoTurno)!.horaInicio}</p>
+                <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{(turnoActual || proximoTurno)!.servicio.duracion} min</p>
+              </div>
+              <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 rounded font-semibold text-xs px-2.5 py-0.5 align-middle self-center">
+                {getEstadoLabel((turnoActual || proximoTurno)!.estado)}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Botón de Registro por orden de llegada */}
       <Button 
         className="w-full h-12 text-zinc-200 bg-[#121214] hover:bg-zinc-800 border-zinc-800 font-medium" 
         variant="outline"
