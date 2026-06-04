@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -27,16 +27,11 @@ import { barberos, turnos, clientes, servicios } from "@/lib/mock-data"
 import type { Appointment, AppointmentStatus, Client } from "@/lib/types"
 import { 
   Calendar, 
-  Clock, 
   User, 
   Phone, 
   Mail, 
-  Check, 
-  X, 
-  Play,
   History,
   TrendingUp,
-  DollarSign,
   Users,
   AlertCircle,
   ChevronRight,
@@ -89,18 +84,9 @@ export default function PanelBarbero() {
   const turnosHoy = turnosState.length
   const turnosCompletados = turnosState.filter(t => t.estado === 'finalizado').length
   const turnosPendientes = turnosState.filter(t => ['reservado', 'confirmado'].includes(t.estado)).length
-  const ausenciasHoy = turnosState.filter(t => t.estado === 'ausente').length
   const ingresosDia = turnosState
     .filter(t => t.estado === 'finalizado')
     .reduce((sum, t) => sum + t.precioFinal, 0)
-
-  // Funcion para cambiar estado del turno
-  const cambiarEstadoTurno = (turnoId: string, nuevoEstado: AppointmentStatus) => {
-    setTurnosState(prev => 
-      prev.map(t => t.id === turnoId ? { ...t, estado: nuevoEstado } : t)
-    )
-    setSelectedTurno(null)
-  }
 
   // Obtener historial del cliente
   const getHistorialCliente = (clienteId: string) => {
@@ -142,6 +128,14 @@ export default function PanelBarbero() {
     ['reservado', 'confirmado'].includes(t.estado) && 
     t.horaInicio > horaActual
   )
+
+  // Manejo correcto del clic en Ver más para evitar errores de compilación
+  const abrirDetalleProximoTurno = () => {
+    const turnoDestacado = turnoActual || proximoTurno
+    if (turnoDestacado) {
+      setSelectedTurno(turnoDestacado)
+    }
+  }
 
   // Registrar turno por orden de llegada
   const registrarTurnoOrdenLlegada = () => {
@@ -207,60 +201,61 @@ export default function PanelBarbero() {
   return (
     <div className="w-full min-h-screen bg-[#070708] text-zinc-100 p-4 md:p-8 flex flex-col gap-6">
       
-      {/* Sección Superior: Próximo Turno (Izquierda) y Saludo/Fecha (Derecha) */}
-      <div className="w-full flex flex-col md:flex-row md:items-start justify-between gap-4">
-        {/* Próximo Turno Destacado horizontal de lado a lado */}
-        <div className="w-full md:max-w-xs">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">PROXIMO TURNO</p>
-          <div className="flex items-baseline justify-between">
+      {/* SECCIÓN 1: TARJETA PROXIMO TURNO */}
+      <Card className="bg-[#111113] border-zinc-800/80 w-full">
+        <CardContent className="p-5 flex flex-col gap-1.5">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">PROXIMO TURNO</p>
+          <div className="flex items-center justify-between mt-1">
             <div>
-              <h2 className="text-xl font-bold text-white">Juan Perez</h2>
+              <h2 className="text-2xl font-bold text-white tracking-tight">Juan Perez</h2>
               <p className="text-xs text-zinc-400 mt-0.5">Corte + Barba</p>
             </div>
             <div className="text-right">
-              <p className="text-xl font-bold text-white">09:00</p>
+              <p className="text-2xl font-bold text-white tracking-tight">09:00</p>
               <p className="text-[10px] text-zinc-500 font-medium mt-0.5">60 min</p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-7 px-3 bg-zinc-900/50 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white mt-2.5"
-            onClick={() => setSelectedTurno((turnoActual || proximoTurno) ?? null)}
-          >
-            Ver mas
-          </Button>
-        </div>
-
-        {/* Saludo, Fecha y Campana */}
-        <div className="flex items-center justify-between md:justify-end gap-6 md:text-right ml-auto">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Hola, {barbero.nombre.split(' ')[0]}</h1>
-            <p className="text-sm text-zinc-400 capitalize mt-1">
-              {new Date().toLocaleDateString('es-AR', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long' 
-              })}
-            </p>
+          <div className="pt-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-7 px-3 bg-zinc-900 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white"
+              onClick={abrirDetalleProximoTurno}
+            >
+              Ver mas
+            </Button>
           </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="relative bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
-            onClick={() => setShowNotificaciones(true)}
-          >
-            <Bell className="h-5 w-5" />
-            {notificacionesSinLeer > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-black">
-                {notificacionesSinLeer}
-              </span>
-            )}
-          </Button>
+        </CardContent>
+      </Card>
+
+      {/* SECCIÓN 2: SALUDO Y FECHA (Flotando libre) */}
+      <div className="flex items-center justify-between w-full px-1">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Hola, {barbero.nombre.split(' ')[0]}</h1>
+          <p className="text-sm text-zinc-400 capitalize mt-1">
+            {new Date().toLocaleDateString('es-AR', { 
+              weekday: 'long', 
+              day: 'numeric', 
+              month: 'long' 
+            })}
+          </p>
         </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="relative bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white h-10 w-10"
+          onClick={() => setShowNotificaciones(true)}
+        >
+          <Bell className="h-5 w-5" />
+          {notificacionesSinLeer > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-black">
+              {notificacionesSinLeer}
+            </span>
+          )}
+        </Button>
       </div>
 
-      {/* Métricas */}
+      {/* SECCIÓN 3: METRICAS RAPIDAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         <Card className="bg-[#111113] border-zinc-800/80">
           <CardContent className="p-6 flex flex-col items-center justify-center">
@@ -268,19 +263,19 @@ export default function PanelBarbero() {
             <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Turnos</div>
           </CardContent>
         </Card>
-        <Card className="bg-[#121214] border-zinc-800/80">
+        <Card className="bg-[#111113] border-zinc-800/80">
           <CardContent className="p-6 flex flex-col items-center justify-center">
             <div className="text-4xl font-bold text-green-400 tracking-tight">{turnosCompletados}</div>
             <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Hechos</div>
           </CardContent>
         </Card>
-        <Card className="bg-[#121214] border-zinc-800/80">
+        <Card className="bg-[#111113] border-zinc-800/80">
           <CardContent className="p-6 flex flex-col items-center justify-center">
             <div className="text-4xl font-bold text-blue-400 tracking-tight">{turnosPendientes}</div>
             <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Pendientes</div>
           </CardContent>
         </Card>
-        <Card className="bg-[#121214] border-zinc-800/80">
+        <Card className="bg-[#111113] border-zinc-800/80">
           <CardContent className="p-6 flex flex-col items-center justify-center">
             <div className="text-4xl font-bold text-amber-400 tracking-tight">${(ingresosDia / 1000).toFixed(1)}k</div>
             <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Hoy</div>
@@ -288,7 +283,7 @@ export default function PanelBarbero() {
         </Card>
       </div>
 
-      {/* Botón de Registro */}
+      {/* Boton para agregar turno */}
       <Button 
         className="w-full h-12 text-zinc-200 bg-[#121214] hover:bg-zinc-800 border-zinc-800 font-medium" 
         variant="outline"
@@ -297,7 +292,7 @@ export default function PanelBarbero() {
         <Plus className="mr-2 h-4 w-4" /> Registrar turno por orden de llegada
       </Button>
 
-      {/* Tabs */}
+      {/* Estructura de solapas */}
       <Tabs defaultValue="hoy" className="w-full flex flex-col gap-4">
         <TabsList className="w-full flex justify-between items-center rounded-none h-12 bg-transparent border-b border-zinc-800 p-0">
           <TabsTrigger 
