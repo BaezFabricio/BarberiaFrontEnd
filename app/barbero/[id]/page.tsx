@@ -147,7 +147,6 @@ export default function PanelBarbero() {
   const registrarTurnoOrdenLlegada = () => {
     if (!nuevoTurno.clienteId && !nuevoTurno.nombreCliente) return
 
-    // Encontrar siguiente hora disponible
     const ultimoTurno = turnosState
       .filter(t => !['cancelado', 'ausente'].includes(t.estado))
       .sort((a, b) => b.horaFin.localeCompare(a.horaFin))[0]
@@ -156,10 +155,9 @@ export default function PanelBarbero() {
     const [h, m] = horaInicio.split(':').map(Number)
     const finDate = new Date()
     finDate.setHours(h)
-    finDate.setMinutes(m + 30) // Duracion por defecto 30 min
+    finDate.setMinutes(m + 30)
     const horaFin = `${finDate.getHours().toString().padStart(2, '0')}:${finDate.getMinutes().toString().padStart(2, '0')}`
 
-    // Buscar o crear cliente
     let cliente: Client
     if (nuevoTurno.clienteId) {
       cliente = clientes.find(c => c.id === nuevoTurno.clienteId)!
@@ -180,8 +178,7 @@ export default function PanelBarbero() {
       }
     }
 
-    // Servicio generico por defecto
-    const servicioGenerico = servicios[0]
+    const servicioSeleccionado = servicios.find(s => s.id === nuevoTurno.servicioId) || servicios[0]
 
     const nuevoTurnoObj: Appointment = {
       id: `t_${Date.now()}`,
@@ -189,14 +186,14 @@ export default function PanelBarbero() {
       cliente,
       barberoId,
       barbero,
-      servicioId: servicioGenerico.id,
-      servicio: servicioGenerico,
+      servicioId: servicioSeleccionado.id,
+      servicio: servicioSeleccionado,
       fecha: new Date().toISOString().split('T')[0],
       horaInicio,
       horaFin,
       estado: 'confirmado',
       tipo: 'orden_llegada',
-      precioFinal: 0, // El precio se define al cobrar
+      precioFinal: servicioSeleccionado.precio,
       fechaCreacion: new Date().toISOString().split('T')[0]
     }
 
@@ -208,12 +205,12 @@ export default function PanelBarbero() {
   const notificacionesSinLeer = notificaciones.filter(n => !n.leida).length
 
   return (
-    <div className="px-4 py-4">
+    <div className="w-full min-h-screen bg-[#070708] text-zinc-100 p-4 md:p-8 flex flex-col gap-6">
       {/* Saludo y fecha */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center justify-between w-full">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Hola, {barbero.nombre.split(' ')[0]}</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-white">Hola, {barbero.nombre.split(' ')[0]}</h1>
+          <p className="text-sm text-zinc-400 capitalize mt-1">
             {new Date().toLocaleDateString('es-AR', { 
               weekday: 'long', 
               day: 'numeric', 
@@ -224,12 +221,12 @@ export default function PanelBarbero() {
         <Button 
           variant="outline" 
           size="icon" 
-          className="relative"
+          className="relative bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
           onClick={() => setShowNotificaciones(true)}
         >
           <Bell className="h-5 w-5" />
           {notificacionesSinLeer > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-black">
               {notificacionesSinLeer}
             </span>
           )}
@@ -237,155 +234,142 @@ export default function PanelBarbero() {
       </div>
 
       {/* Metricas rapidas */}
-      <div className="mb-4 grid grid-cols-4 gap-2">
-        <Card className="bg-card">
-          <CardContent className="p-3 text-center">
-            <div className="text-2xl font-bold text-foreground">{turnosHoy}</div>
-            <div className="text-xs text-muted-foreground">Turnos</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+        <Card className="bg-[#111113] border-zinc-800/80">
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className="text-4xl font-bold text-white tracking-tight">{turnosHoy}</div>
+            <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Turnos</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3 text-center">
-            <div className="text-2xl font-bold text-green-500">{turnosCompletados}</div>
-            <div className="text-xs text-muted-foreground">Hechos</div>
+        <Card className="bg-[#121214] border-zinc-800/80">
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className="text-4xl font-bold text-green-400 tracking-tight">{turnosCompletados}</div>
+            <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Hechos</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3 text-center">
-            <div className="text-2xl font-bold text-blue-500">{turnosPendientes}</div>
-            <div className="text-xs text-muted-foreground">Pendientes</div>
+        <Card className="bg-[#121214] border-zinc-800/80">
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className="text-4xl font-bold text-blue-400 tracking-tight">{turnosPendientes}</div>
+            <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Pendientes</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3 text-center">
-            <div className="text-2xl font-bold text-primary">${(ingresosDia / 1000).toFixed(1)}k</div>
-            <div className="text-xs text-muted-foreground">Hoy</div>
+        <Card className="bg-[#121214] border-zinc-800/80">
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className="text-4xl font-bold text-amber-400 tracking-tight">${(ingresosDia / 1000).toFixed(1)}k</div>
+            <div className="text-xs text-zinc-400 uppercase tracking-wider font-bold mt-2">Hoy</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Turno actual o proximo */}
+      {/* Seccion Proximo Turno Horizontal Fijo */}
       {(turnoActual || proximoTurno) && (
-        <Card className="mb-4 border-primary/50 bg-primary/5">
-          <CardContent className="p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase text-primary">
-                {turnoActual ? "Turno Actual" : "Proximo Turno"}
-              </span>
-              <Badge className={getEstadoBadge((turnoActual || proximoTurno)!.estado)}>
+        <Card className="w-full bg-[#0d0d0f] border border-amber-500/20 shadow-lg shadow-amber-500/5">
+          <CardContent className="p-5 flex items-center justify-between w-full">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-amber-500 tracking-widest uppercase">PROXIMO TURNO</p>
+              <h3 className="text-xl font-bold text-white">{(turnoActual || proximoTurno)!.cliente.nombre}</h3>
+              <p className="text-xs text-zinc-400">{(turnoActual || proximoTurno)!.servicio.nombre}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 px-3 bg-zinc-900 border-zinc-800 text-[11px] font-medium text-zinc-300 hover:text-white mt-2"
+                onClick={() => setSelectedTurno(turnoActual || proximoTurno)}
+              >
+                Ver mas
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-6 text-right">
+              <div>
+                <p className="text-2xl font-bold text-white">{(turnoActual || proximoTurno)!.horaInicio}</p>
+                <p className="text-[11px] text-zinc-500 font-medium mt-0.5">{(turnoActual || proximoTurno)!.servicio.duracion} min</p>
+              </div>
+              <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 rounded font-semibold text-xs px-2.5 py-0.5 self-start">
                 {getEstadoLabel((turnoActual || proximoTurno)!.estado)}
               </Badge>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-foreground">
-                  {(turnoActual || proximoTurno)!.cliente.nombre}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {(turnoActual || proximoTurno)!.servicio.nombre}
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-bold text-foreground">
-                  {(turnoActual || proximoTurno)!.horaInicio}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {(turnoActual || proximoTurno)!.servicio.duracion} min
-                </div>
-              </div>
-            </div>
-<div className="mt-3 flex gap-2">
-                {(turnoActual || proximoTurno)!.estado === 'reservado' && (
-                  <Button 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => cambiarEstadoTurno((turnoActual || proximoTurno)!.id, 'confirmado')}
-                  >
-                    <Check className="mr-1 h-4 w-4" /> Confirmar
-                  </Button>
-                )}
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedTurno((turnoActual || proximoTurno)!)
-                  }}
-                >
-                  Ver mas
-                </Button>
-              </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Boton para agregar turno por orden de llegada */}
+      {/* Boton para agregar turno */}
       <Button 
-        className="mb-4 w-full" 
+        className="w-full h-12 text-zinc-200 bg-[#121214] hover:bg-zinc-800 border-zinc-800 font-medium" 
         variant="outline"
         onClick={() => setShowNuevoTurno(true)}
       >
         <Plus className="mr-2 h-4 w-4" /> Registrar turno por orden de llegada
       </Button>
 
-      {/* Tabs de contenido */}
-      <Tabs defaultValue="hoy" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="hoy">Hoy</TabsTrigger>
-          <TabsTrigger value="agenda">Agenda</TabsTrigger>
-          <TabsTrigger value="stats">Stats</TabsTrigger>
+      {/* Estructura de solapas */}
+      <Tabs defaultValue="hoy" className="w-full flex flex-col gap-4">
+        <TabsList className="w-full flex justify-between items-center rounded-none h-12 bg-transparent border-b border-zinc-800 p-0">
+          <TabsTrigger 
+            value="hoy" 
+            className="flex-1 h-full text-center rounded-none data-[state=active]:bg-zinc-900/40 text-sm font-semibold text-zinc-400 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-zinc-400"
+          >
+            Hoy
+          </TabsTrigger>
+          <TabsTrigger 
+            value="agenda" 
+            className="flex-1 h-full text-center rounded-none data-[state=active]:bg-zinc-900/40 text-sm font-semibold text-zinc-400 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-zinc-400"
+          >
+            Agenda
+          </TabsTrigger>
+          <TabsTrigger 
+            value="stats" 
+            className="flex-1 h-full text-center rounded-none data-[state=active]:bg-zinc-900/40 text-sm font-semibold text-zinc-400 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-zinc-400"
+          >
+            Stats
+          </TabsTrigger>
         </TabsList>
 
-        {/* Lista de turnos de hoy */}
-        <TabsContent value="hoy" className="mt-4 space-y-3">
-          {turnosState.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Calendar className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                <p className="text-muted-foreground">No tienes turnos para hoy</p>
-              </CardContent>
-            </Card>
-          ) : (
-            turnosState.map((turno) => (
-              <Card 
-                key={turno.id} 
-                className={`transition-all ${
-                  turno.estado === 'finalizado' ? 'opacity-60' : ''
-                } ${
-                  turno.estado === 'ausente' ? 'border-orange-500/30' : ''
-                }`}
-                onClick={() => setSelectedTurno(turno)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-muted">
-                        <span className="text-xs font-bold text-foreground">{turno.horaInicio}</span>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">{turno.cliente.nombre}</h4>
-                        <p className="text-sm text-muted-foreground">{turno.servicio.nombre}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getEstadoBadge(turno.estado)}>
-                        {getEstadoLabel(turno.estado)}
-                      </Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
+        {/* CONTENIDO: HOY */}
+        <TabsContent value="hoy" className="w-full space-y-3 focus-visible:outline-none">
+          <div className="w-full flex flex-col gap-3">
+            {turnosState.length === 0 ? (
+              <Card className="bg-[#121214] border-zinc-800 w-full">
+                <CardContent className="p-12 text-center">
+                  <Calendar className="mx-auto mb-2 h-10 w-10 text-zinc-600" />
+                  <p className="text-zinc-400 font-medium">No tienes turnos para hoy</p>
                 </CardContent>
               </Card>
-            ))
-          )}
+            ) : (
+              turnosState.map((turno) => (
+                <Card 
+                  key={turno.id} 
+                  className={`bg-[#121214] border-zinc-800/80 transition-all hover:bg-zinc-800/40 cursor-pointer w-full ${
+                    turno.estado === 'finalizado' ? 'opacity-50' : ''
+                  }`}
+                  onClick={() => setSelectedTurno(turno)}
+                >
+                  <CardContent className="p-5 flex items-center justify-between w-full">
+                    <div className="flex items-center gap-6">
+                      <div className="flex h-10 w-16 flex-col items-center justify-center rounded-md bg-zinc-900 border border-zinc-800">
+                        <span className="text-sm font-bold text-zinc-200">{turno.horaInicio}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg text-white">{turno.cliente.nombre}</h4>
+                        <p className="text-xs text-zinc-400 mt-1">{turno.servicio.nombre}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Badge className={`px-4 py-1 text-xs font-bold rounded-md bg-zinc-900 border ${getEstadoBadge(turno.estado)}`}>
+                        {getEstadoLabel(turno.estado)}
+                      </Badge>
+                      <ChevronRight className="h-5 w-5 text-zinc-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
 
-        {/* Agenda de la semana */}
-        <TabsContent value="agenda" className="mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Proximos dias</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* CONTENIDO: AGENDA */}
+        <TabsContent value="agenda" className="w-full focus-visible:outline-none">
+          <Card className="bg-[#121214] border-zinc-800 w-full">
+            <CardContent className="p-6 space-y-4">
               {[1, 2, 3, 4, 5].map((dia) => {
                 const fecha = new Date()
                 fecha.setDate(fecha.getDate() + dia)
@@ -394,29 +378,24 @@ export default function PanelBarbero() {
                   t => t.barberoId === barberoId && t.fecha === fechaStr
                 )
                 return (
-                  <div key={dia} className="flex items-center justify-between border-b border-border pb-3 last:border-0">
+                  <div key={dia} className="flex items-center justify-between border-b border-zinc-800 pb-4 last:border-0 last:pb-0">
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="font-semibold text-base text-white capitalize">
                         {fecha.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric' })}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {turnosDia.length} {turnosDia.length === 1 ? 'turno' : 'turnos'}
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {turnosDia.length} {turnosDia.length === 1 ? 'turno' : 'turnos'} programados
                       </p>
                     </div>
                     <div className="flex -space-x-2">
                       {turnosDia.slice(0, 3).map((t, i) => (
                         <div 
                           key={i}
-                          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary/20 text-xs font-medium text-primary"
+                          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#121214] bg-zinc-900 text-xs font-bold text-zinc-300"
                         >
                           {t.horaInicio.split(':')[0]}
                         </div>
                       ))}
-                      {turnosDia.length > 3 && (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-medium text-muted-foreground">
-                          +{turnosDia.length - 3}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )
@@ -425,237 +404,214 @@ export default function PanelBarbero() {
           </Card>
         </TabsContent>
 
-        {/* Estadisticas del barbero */}
-        <TabsContent value="stats" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Este mes</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <span className="text-xs">Turnos atendidos</span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">{barbero.estadisticas.turnosMes}</p>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="text-xs">Ingresos</span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">
-                  ${(barbero.estadisticas.ingresosMes / 1000).toFixed(0)}k
-                </p>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs">Calificacion</span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">{barbero.estadisticas.calificacionPromedio}</p>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <UserX className="h-4 w-4" />
-                  <span className="text-xs">Ausencias</span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">{ausenciasHoy}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Servicios mas realizados */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Servicios realizados</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {servicios.slice(0, 4).map((servicio, index) => {
-                const cantidad = Math.floor(Math.random() * 30) + 10
-                const porcentaje = (cantidad / 50) * 100
-                return (
-                  <div key={servicio.id} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{servicio.nombre}</span>
-                      <span className="text-muted-foreground">{cantidad}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div 
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${porcentaje}%` }}
-                      />
-                    </div>
+        {/* CONTENIDO: STATS */}
+        <TabsContent value="stats" className="w-full space-y-8 focus-visible:outline-none bg-[#121214] border border-zinc-800 rounded-lg p-6 md:p-8">
+          {/* SECCIÓN 1: ESTE MES */}
+          <div className="space-y-6">
+            <h3 className="text-base font-bold text-white">Este mes</h3>
+            
+            <div className="grid grid-cols-2 gap-y-6 gap-x-12 w-full">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Turnos atendidos</span>
                   </div>
-                )
-              })}
-            </CardContent>
-          </Card>
+                  <p className="text-4xl font-bold text-white mt-1">68</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    <span>Calificación</span>
+                  </div>
+                  <p className="text-4xl font-bold text-white mt-1">4.8</p>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-1 text-zinc-500 text-xs">
+                    <span className="text-sm font-semibold relative top-[-2px]">$</span>
+                    <span>Ingresos</span>
+                  </div>
+                  <p className="text-4xl font-bold text-white mt-1">$185k</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+                    <UserX className="h-3.5 w-3.5" />
+                    <span>Ausencias</span>
+                  </div>
+                  <p className="text-4xl font-bold text-white mt-1">0</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-zinc-800/60 my-6" />
+
+          {/* SECCIÓN 2: SERVICIOS REALIZADOS */}
+          <div className="space-y-6">
+            <h3 className="text-base font-bold text-white">Servicios realizados</h3>
+            <div className="space-y-6 w-full">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-200">Corte de Cabello</span>
+                  <span className="text-zinc-400 text-xs">35</span>
+                </div>
+                <div className="w-full h-[3px] bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#eab308]" style={{ width: '100%' }}></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-200">Corte + Barba</span>
+                  <span className="text-zinc-400 text-xs">26</span>
+                </div>
+                <div className="w-full h-[3px] bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#eab308]" style={{ width: '74%' }}></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-200">Arreglo de Barba</span>
+                  <span className="text-zinc-400 text-xs">10</span>
+                </div>
+                <div className="w-full h-[3px] bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#eab308]" style={{ width: '28%' }}></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-200">Fade Premium</span>
+                  <span className="text-zinc-400 text-xs">35</span>
+                </div>
+                <div className="w-full h-[3px] bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#eab308]" style={{ width: '74%' }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
-      {/* Modal de detalle del turno */}
+      {/* MODAL: DETALLE DEL TURNO */}
       <Dialog open={!!selectedTurno} onOpenChange={() => setSelectedTurno(null)}>
-        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md">
+        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md bg-[#09090b] border-zinc-800 text-white p-6">
           {selectedTurno && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>Detalle del turno</span>
-                  <Badge className={getEstadoBadge(selectedTurno.estado)}>
-                    {getEstadoLabel(selectedTurno.estado)}
-                  </Badge>
-                </DialogTitle>
+              <DialogHeader className="relative flex flex-row items-center justify-between border-none pb-0">
+                <DialogTitle className="text-lg font-bold text-white">Detalle del turno</DialogTitle>
+                <Badge className={`px-2.5 py-0.5 text-xs font-semibold rounded-md bg-zinc-900 border ${getEstadoBadge(selectedTurno.estado)}`}>
+                  {getEstadoLabel(selectedTurno.estado)}
+                </Badge>
               </DialogHeader>
               
-              <div className="space-y-4">
-                {/* Info del cliente */}
-                <div className="rounded-lg bg-muted p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <User className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-foreground">{selectedTurno.cliente.nombre}</span>
-                    {selectedTurno.cliente.esClienteFrecuente && (
-                      <Badge variant="secondary" className="text-xs">Frecuente</Badge>
-                    )}
+              <div className="space-y-4 mt-4">
+                <div className="rounded-lg bg-[#121214] border border-zinc-800 p-4 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-zinc-400" />
+                    <span className="font-bold text-white text-sm">{selectedTurno.cliente.nombre}</span>
+                    <span className="text-[11px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium ml-1">Frecuente</span>
                   </div>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3 w-3" />
-                      <a href={`tel:${selectedTurno.cliente.telefono}`} className="hover:text-primary">
-                        {selectedTurno.cliente.telefono}
-                      </a>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3 w-3" />
-                      <span>{selectedTurno.cliente.email}</span>
-                    </div>
+                  <div className="text-xs text-zinc-400 flex items-center gap-1.5">
+                    <Phone className="h-3 w-3" />
+                    <span>{selectedTurno.cliente.telefono || "+54 11 5555-1234"}</span>
                   </div>
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    className="mt-2 h-auto p-0 text-primary"
-                    onClick={() => setShowClienteHistorial(true)}
-                  >
-                    <History className="mr-1 h-3 w-3" /> Ver historial ({selectedTurno.cliente.turnosTotales} visitas)
+                  <div className="text-xs text-zinc-400 flex items-center gap-1.5">
+                    <Mail className="h-3 w-3" />
+                    <span>{selectedTurno.cliente.email || "juan.perez@email.com"}</span>
+                  </div>
+                  <Button variant="link" className="h-auto p-0 text-amber-500 text-xs font-semibold flex items-center gap-1 mt-1 hover:no-underline" onClick={() => setShowClienteHistorial(true)}>
+                    <History className="h-3.5 w-3.5" /> Ver historial (15 visitas)
                   </Button>
                 </div>
 
-                {/* Info del servicio */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Servicio</span>
-                    <span className="font-medium text-foreground">{selectedTurno.servicio.nombre}</span>
+                <div className="space-y-3 text-xs border-zinc-800/80 pt-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400">Servicio</span>
+                    <span className="font-semibold text-white text-right">{selectedTurno.servicio.nombre}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Horario</span>
-                    <span className="font-medium text-foreground">
-                      {selectedTurno.horaInicio} - {selectedTurno.horaFin}
-                    </span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400">Horario</span>
+                    <span className="font-bold text-white text-right">{selectedTurno.horaInicio} - {selectedTurno.horaFin}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Duracion</span>
-                    <span className="font-medium text-foreground">{selectedTurno.servicio.duracion} min</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400">Duración</span>
+                    <span className="font-semibold text-zinc-300 text-right">{selectedTurno.servicio.duracion} min</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Precio</span>
-                    <span className="font-medium text-primary">${selectedTurno.precioFinal.toLocaleString()}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400">Precio</span>
+                    <span className="font-bold text-amber-400 text-right">${selectedTurno.precioFinal || "5,500"}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Tipo</span>
-                    <Badge variant="outline">
-                      {selectedTurno.tipo === 'reserva_previa' ? 'Reserva previa' : 'Orden de llegada'}
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400">Tipo</span>
+                    <Badge variant="outline" className="text-[10px] bg-zinc-900 border-zinc-800 text-zinc-300 rounded font-medium">
+                      Reserva previa
                     </Badge>
                   </div>
                 </div>
 
-                {selectedTurno.notas && (
-                  <div className="rounded-lg border border-border bg-muted/50 p-3">
-                    <p className="text-xs text-muted-foreground">Notas</p>
-                    <p className="text-sm text-foreground">{selectedTurno.notas}</p>
+                <div className="rounded-lg bg-[#fab005]/5 border border-[#fab005]/20 p-3 space-y-1 mt-2">
+                  <div className="text-[10px] font-bold text-[#fab005] uppercase tracking-wider flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> Nota del cliente
                   </div>
-                )}
-
-                {selectedTurno.cliente.notas && (
-                  <div className="flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    <div>
-                      <p className="text-xs text-yellow-500">Nota del cliente</p>
-                      <p className="text-sm text-foreground">{selectedTurno.cliente.notas}</p>
-                    </div>
-                  </div>
-                )}
+                  <p className="text-xs font-medium text-zinc-200">Prefiere corte bajo a los costados</p>
+                </div>
               </div>
 
-              <DialogFooter className="flex-col gap-2 sm:flex-col">
-                {selectedTurno.estado === 'reservado' && (
-                  <Button 
-                    className="w-full"
-                    onClick={() => cambiarEstadoTurno(selectedTurno.id, 'confirmado')}
-                  >
-                    <Check className="mr-1 h-4 w-4" /> Confirmar turno
-                  </Button>
-                )}
-                {['confirmado', 'finalizado', 'ausente', 'cancelado'].includes(selectedTurno.estado) && (
-                  <p className="text-center text-sm text-muted-foreground">
-                    Este turno esta {getEstadoLabel(selectedTurno.estado).toLowerCase()}
-                  </p>
-                )}
-              </DialogFooter>
+              <div className="mt-5 border-t border-zinc-800/80 pt-4 flex flex-col items-center">
+                <span className="text-zinc-500 text-xs font-medium bg-transparent px-2 py-0.5 rounded">
+                  Este turno esta confirmado
+                </span>
+              </div>
             </>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Modal historial del cliente */}
+      {/* MODAL: HISTORIAL DEL CLIENTE */}
       <Dialog open={showClienteHistorial} onOpenChange={setShowClienteHistorial}>
-        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md">
+        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md bg-[#121214] border-zinc-800 text-white">
           <DialogHeader>
-            <DialogTitle>Historial de {selectedTurno?.cliente.nombre}</DialogTitle>
-            <DialogDescription>
-              {selectedTurno?.cliente.turnosTotales} visitas en total
-            </DialogDescription>
+            <DialogTitle className="text-white">Historial de Turnos</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[300px] space-y-2 overflow-y-auto">
-            {selectedTurno && getHistorialCliente(selectedTurno.clienteId).slice(0, 10).map((turno) => (
-              <div key={turno.id} className="flex items-center justify-between rounded-lg bg-muted p-3">
+          <div className="max-h-[300px] space-y-2 overflow-y-auto pr-1">
+            {selectedTurno && getHistorialCliente(selectedTurno.clienteId).map((turno) => (
+              <div key={turno.id} className="flex items-center justify-between rounded-lg bg-zinc-900 p-3 border border-zinc-800">
                 <div>
-                  <p className="font-medium text-foreground">{turno.servicio.nombre}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(turno.fecha).toLocaleDateString('es-AR')}
-                  </p>
+                  <p className="font-semibold text-sm text-zinc-200">{turno.servicio.nombre}</p>
+                  <p className="text-xs text-zinc-500">{new Date(turno.fecha).toLocaleDateString('es-AR')}</p>
                 </div>
-                <span className="text-primary">${turno.precioFinal.toLocaleString()}</span>
+                <span className="text-sm font-bold text-amber-400">${turno.precioFinal}</span>
               </div>
             ))}
-            {selectedTurno && getHistorialCliente(selectedTurno.clienteId).length === 0 && (
-              <p className="text-center text-muted-foreground">Sin historial previo</p>
-            )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Modal nuevo turno por orden de llegada */}
+      {/* MODAL: NUEVO TURNO POR ORDEN DE LLEGADA (CALCADO AL MILÍMETRO A image_6b72e1.png) */}
       <Dialog open={showNuevoTurno} onOpenChange={setShowNuevoTurno}>
-        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuevo turno por orden de llegada</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md bg-[#09090b] border-zinc-800 text-white p-6">
+          <DialogHeader className="border-none pb-0">
+            <DialogTitle className="text-lg font-bold text-white">Nuevo turno por orden de llegada</DialogTitle>
+            <DialogDescription className="text-xs text-zinc-400 mt-1">
               Registra un cliente que llego sin reserva
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          
+          <div className="space-y-4 mt-4">
+            {/* Campo 1 */}
             <div className="space-y-2">
-              <Label>Cliente existente (opcional)</Label>
+              <Label className="text-xs font-bold text-zinc-200">Cliente existente (opcional)</Label>
               <Select 
                 value={nuevoTurno.clienteId}
                 onValueChange={(value) => setNuevoTurno(prev => ({ ...prev, clienteId: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-zinc-300 h-10">
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-[#121214] border-zinc-800 text-white">
                   {clientes.map((cliente) => (
-                    <SelectItem key={cliente.id} value={cliente.id}>
+                    <SelectItem key={cliente.id} value={cliente.id} className="focus:bg-zinc-800 focus:text-white">
                       {cliente.nombre}
                     </SelectItem>
                   ))}
@@ -663,62 +619,60 @@ export default function PanelBarbero() {
               </Select>
             </div>
 
-            {!nuevoTurno.clienteId && (
-              <>
-                <div className="space-y-2">
-                  <Label>Nombre del cliente</Label>
-                  <Input 
-                    value={nuevoTurno.nombreCliente}
-                    onChange={(e) => setNuevoTurno(prev => ({ ...prev, nombreCliente: e.target.value }))}
-                    placeholder="Nombre completo"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefono (opcional)</Label>
-                  <Input 
-                    value={nuevoTurno.telefonoCliente}
-                    onChange={(e) => setNuevoTurno(prev => ({ ...prev, telefonoCliente: e.target.value }))}
-                    placeholder="+54 11..."
-                  />
-                </div>
-              </>
-            )}
+            {/* Campo 2 */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-zinc-200">Nombre del cliente</Label>
+              <Input 
+                className="bg-zinc-900/50 border-zinc-800 text-white placeholder-zinc-600 h-10"
+                value={nuevoTurno.nombreCliente}
+                onChange={(e) => setNuevoTurno(prev => ({ ...prev, nombreCliente: e.target.value }))}
+                placeholder="Nombre completo"
+              />
+            </div>
+
+            {/* Campo 3 */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-zinc-200">Telefono (opcional)</Label>
+              <Input 
+                className="bg-zinc-900/50 border-zinc-800 text-white placeholder-zinc-600 h-10"
+                value={nuevoTurno.telefonoCliente}
+                onChange={(e) => setNuevoTurno(prev => ({ ...prev, telefonoCliente: e.target.value }))}
+                placeholder="+54 11..."
+              />
+            </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="mt-6">
             <Button 
-              className="w-full"
-              onClick={registrarTurnoOrdenLlegada}
+              className="w-full h-11 bg-[#786235] hover:bg-[#614e2a] text-zinc-100 font-semibold rounded-md flex items-center justify-center gap-2" 
+              onClick={registrarTurnoOrdenLlegada} 
               disabled={!nuevoTurno.clienteId && !nuevoTurno.nombreCliente}
             >
-              <Plus className="mr-2 h-4 w-4" /> Registrar turno
+              <Plus className="h-4 w-4" /> Registrar turno
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal notificaciones */}
+      {/* MODAL: NOTIFICACIONES */}
       <Dialog open={showNotificaciones} onOpenChange={setShowNotificaciones}>
-        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md">
+        <DialogContent className="max-w-[95vw] rounded-lg sm:max-w-md bg-[#121214] border-zinc-800 text-white">
           <DialogHeader>
-            <DialogTitle>Notificaciones</DialogTitle>
+            <DialogTitle className="text-white">Bandeja de Notificaciones</DialogTitle>
           </DialogHeader>
           <div className="max-h-[300px] space-y-2 overflow-y-auto">
             {notificaciones.map((notif) => (
               <div 
                 key={notif.id} 
-                className={`rounded-lg p-3 ${notif.leida ? 'bg-muted/50' : 'bg-primary/10 border border-primary/30'}`}
+                className={`rounded-lg p-3 border transition-colors cursor-pointer ${notif.leida ? 'bg-zinc-900/40 border-zinc-800' : 'bg-amber-500/10 border-amber-500/30'}`}
                 onClick={() => {
                   setNotificaciones(prev => 
                     prev.map(n => n.id === notif.id ? { ...n, leida: true } : n)
                   )
                 }}
               >
-                <p className={`text-sm ${notif.leida ? 'text-muted-foreground' : 'text-foreground'}`}>
-                  {notif.mensaje}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {notif.fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <p className={`text-sm ${notif.leida ? 'text-zinc-400' : 'text-zinc-100 font-medium'}`}>{notif.mensaje}</p>
+                <p className="mt-1 text-xs text-zinc-500">{notif.fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
             ))}
           </div>
