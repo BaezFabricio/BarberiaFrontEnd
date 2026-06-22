@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { AdminHeader } from '@/components/admin/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,34 +24,44 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight,
-  Calendar as CalendarIcon,
-  Clock,
-  User,
-  Scissors,
-  CheckCircle,
-  XCircle,
-  AlertCircle
-} from 'lucide-react'
-import { turnos, barberos, servicios, clientes, horariosDisponibles } from '@/lib/mock-data'
-import { Appointment, AppointmentStatus } from '@/lib/types'
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { api } from '@/lib/api'
 
-const statusConfig: Record<AppointmentStatus, { label: string; color: string; bgColor: string }> = {
-  reservado: { label: 'Reservado', color: 'text-blue-400', bgColor: 'bg-blue-400/10 border-blue-400/20' },
-  confirmado: { label: 'Confirmado', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/20' },
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+type Turno = {
+  idagenda: number
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  estado: 'pendiente' | 'confirmado' | 'finalizado' | 'cancelado'
+  servicio: { nombre_servicio: string; precio: number; duracion_minutos: number }
+  cliente?: { persona: { nombre_completo: string } }
+  barbero: { idusuario: number; persona: { nombre_completo: string } }
+}
+
+type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number; estado: string }
+type Barbero = { idusuario: number; persona: { nombre_completo: string } }
+
+const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
+  pendiente:  { label: 'Pendiente',  color: 'text-yellow-500', bgColor: 'bg-yellow-400/10 border-yellow-400/20' },
+  confirmado: { label: 'Confirmado', color: 'text-primary',    bgColor: 'bg-primary/10 border-primary/20' },
   finalizado: { label: 'Finalizado', color: 'text-muted-foreground', bgColor: 'bg-muted border-muted' },
-  cancelado: { label: 'Cancelado', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/20' },
-  ausente: { label: 'Ausente', color: 'text-warning', bgColor: 'bg-warning/10 border-warning/20' },
+  cancelado:  { label: 'Cancelado',  color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/20' },
 }
 
 const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
 const fullDaysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+const horariosDisponibles = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00']
+
+const formatDateString = (date: Date) => date.toISOString().split('T')[0]
+const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+// ── Página ────────────────────────────────────────────────────────────────────
 
 export default function AgendaPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -60,97 +70,94 @@ export default function AgendaPage() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
+  // Datos de la API
+  const [turnos, setTurnos] = useState<Turno[]>([])
+  const [servicios, setServicios] = useState<Servicio[]>([])
+  const [barberos, setBarberos] = useState<Barbero[]>([])
 
-  const formatDateString = (date: Date) => date.toISOString().split('T')[0]
+  // Formulario nuevo turno
+  const [nuevoTurno, setNuevoTurno] = useState({
+    nombre_cliente: '', telefono_cliente: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '',
+  })
 
-  // Get calendar days for month view
+  const cargarTurnos = useCallback(async () => {
+    try {
+      // En vista día pedimos solo ese día; en semana/mes cargamos todo y filtramos en cliente
+      const fecha = viewMode === 'day' ? `?fecha=${formatDateString(selectedDate)}` : ''
+      const data = await api.get<Turno[]>(`/turnos${fecha}`)
+      setTurnos(data)
+    } catch { setTurnos([]) }
+  }, [selectedDate, viewMode])
+
+  useEffect(() => { cargarTurnos() }, [cargarTurnos])
+
+  useEffect(() => {
+    Promise.allSettled([api.get<Servicio[]>('/servicios'), api.get<Barbero[]>('/barberos')]).then(([svcs, barbs]) => {
+      if (svcs.status === 'fulfilled') setServicios(svcs.value)
+      if (barbs.status === 'fulfilled') setBarberos(barbs.value)
+    })
+  }, [])
+
+  // Calendario mes
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     const startOffset = firstDay.getDay()
-    
     const days: { date: Date; isCurrentMonth: boolean }[] = []
-    
-    // Previous month days
-    for (let i = startOffset - 1; i >= 0; i--) {
-      const date = new Date(year, month, -i)
-      days.push({ date, isCurrentMonth: false })
-    }
-    
-    // Current month days
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      days.push({ date: new Date(year, month, i), isCurrentMonth: true })
-    }
-    
-    // Next month days to fill grid
+    for (let i = startOffset - 1; i >= 0; i--) days.push({ date: new Date(year, month, -i), isCurrentMonth: false })
+    for (let i = 1; i <= lastDay.getDate(); i++) days.push({ date: new Date(year, month, i), isCurrentMonth: true })
     const remaining = 42 - days.length
-    for (let i = 1; i <= remaining; i++) {
-      days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
-    }
-    
+    for (let i = 1; i <= remaining; i++) days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
     return days
   }, [currentDate])
 
-  // Get week days
   const weekDays = useMemo(() => {
     const start = new Date(selectedDate)
     start.setDate(start.getDate() - start.getDay())
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(start)
-      date.setDate(start.getDate() + i)
-      return date
-    })
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d })
   }, [selectedDate])
 
-  // Filter appointments
-  const filteredAppointments = turnos.filter(apt => {
-    if (selectedBarberId !== 'all' && apt.barberoId !== selectedBarberId) return false
-    return true
-  })
+  const filteredTurnos = turnos.filter(t => selectedBarberId === 'all' || String(t.barbero?.idusuario) === selectedBarberId)
 
   const getAppointmentsForDate = (date: Date) => {
     const dateStr = formatDateString(date)
-    return filteredAppointments.filter(apt => apt.fecha === dateStr)
+    return filteredTurnos.filter(t => t.fecha === dateStr)
   }
 
-  const navigateMonth = (direction: number) => {
-    const newDate = new Date(currentDate)
-    newDate.setMonth(newDate.getMonth() + direction)
-    setCurrentDate(newDate)
+  const calcularHoraFin = (horaInicio: string, duracion: number) => {
+    const [h, m] = horaInicio.split(':').map(Number)
+    const total = h * 60 + m + duracion
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}:00`
   }
 
-  const navigateWeek = (direction: number) => {
-    const newDate = new Date(selectedDate)
-    newDate.setDate(newDate.getDate() + (direction * 7))
-    setSelectedDate(newDate)
+  const handleCrearTurno = async () => {
+    const servicio = servicios.find(s => s.idservicio === Number(nuevoTurno.idservicio))
+    if (!servicio || !nuevoTurno.idusuario_barbero || !nuevoTurno.hora_inicio || !nuevoTurno.fecha) return
+    try {
+      await api.post('/turnos', {
+        nombre_cliente: nuevoTurno.nombre_cliente || undefined,
+        telefono_cliente: nuevoTurno.telefono_cliente || undefined,
+        idusuario_barbero: Number(nuevoTurno.idusuario_barbero),
+        idservicio: Number(nuevoTurno.idservicio),
+        fecha: nuevoTurno.fecha,
+        hora_inicio: `${nuevoTurno.hora_inicio}:00`,
+        hora_fin: calcularHoraFin(nuevoTurno.hora_inicio, servicio.duracion_minutos),
+      })
+      setIsCreateDialogOpen(false)
+      setNuevoTurno({ nombre_cliente: '', telefono_cliente: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '' })
+      cargarTurnos()
+    } catch (err) { console.error(err) }
   }
 
-  const navigateDay = (direction: number) => {
-    const newDate = new Date(selectedDate)
-    newDate.setDate(newDate.getDate() + direction)
-    setSelectedDate(newDate)
-  }
-
-  const isToday = (date: Date) => {
-    const today = new Date()
-    return date.toDateString() === today.toDateString()
-  }
-
-  const isSelected = (date: Date) => {
-    return date.toDateString() === selectedDate.toDateString()
-  }
-
-  const activeBarbers = barberos.filter(b => b.activo)
+  const isToday = (date: Date) => date.toDateString() === new Date().toDateString()
+  const isSelected = (date: Date) => date.toDateString() === selectedDate.toDateString()
 
   return (
     <>
-      <AdminHeader 
-        title="Agenda" 
+      <AdminHeader
+        title="Agenda"
         description="Gestiona los turnos y reservas"
         actions={
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -163,34 +170,29 @@ export default function AgendaPage() {
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Crear Turno</DialogTitle>
-                <DialogDescription>
-                  Agenda un nuevo turno para un cliente
-                </DialogDescription>
+                <DialogDescription>Agenda un nuevo turno para un cliente</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label>Cliente</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientes.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Nombre del cliente (opcional)</Label>
+                  <Input placeholder="Ej: Juan Pérez"
+                    value={nuevoTurno.nombre_cliente}
+                    onChange={e => setNuevoTurno(p => ({ ...p, nombre_cliente: e.target.value }))} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Teléfono del cliente (opcional)</Label>
+                  <Input placeholder="+54 11 1234-5678"
+                    value={nuevoTurno.telefono_cliente}
+                    onChange={e => setNuevoTurno(p => ({ ...p, telefono_cliente: e.target.value }))} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Servicio</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar servicio" />
-                    </SelectTrigger>
+                  <Select value={nuevoTurno.idservicio} onValueChange={v => setNuevoTurno(p => ({ ...p, idservicio: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
                     <SelectContent>
-                      {servicios.filter(s => s.activo).map(s => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.nombre} - ${s.precio}
+                      {servicios.filter(s => s.estado === 'activo').map(s => (
+                        <SelectItem key={s.idservicio} value={String(s.idservicio)}>
+                          {s.nombre_servicio} — {s.duracion_minutos}min — ${Number(s.precio).toLocaleString('es-AR')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -198,13 +200,13 @@ export default function AgendaPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Barbero</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar barbero" />
-                    </SelectTrigger>
+                  <Select value={nuevoTurno.idusuario_barbero} onValueChange={v => setNuevoTurno(p => ({ ...p, idusuario_barbero: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
                     <SelectContent>
-                      {activeBarbers.map(b => (
-                        <SelectItem key={b.id} value={b.id}>{b.nombre}</SelectItem>
+                      {barberos.map(b => (
+                        <SelectItem key={b.idusuario} value={String(b.idusuario)}>
+                          {b.persona.nombre_completo}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -212,14 +214,13 @@ export default function AgendaPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Fecha</Label>
-                    <Input type="date" />
+                    <Input type="date" value={nuevoTurno.fecha}
+                      onChange={e => setNuevoTurno(p => ({ ...p, fecha: e.target.value }))} />
                   </div>
                   <div className="grid gap-2">
                     <Label>Hora</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Horario" />
-                      </SelectTrigger>
+                    <Select value={nuevoTurno.hora_inicio} onValueChange={v => setNuevoTurno(p => ({ ...p, hora_inicio: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Horario" /></SelectTrigger>
                       <SelectContent>
                         {horariosDisponibles.map(h => (
                           <SelectItem key={h} value={h}>{h}</SelectItem>
@@ -228,24 +229,13 @@ export default function AgendaPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Tipo de turno</Label>
-                  <Select defaultValue="reserva_previa">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="reserva_previa">Reserva previa</SelectItem>
-                      <SelectItem value="orden_llegada">Orden de llegada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => setIsCreateDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancelar</Button>
+                <Button
+                  onClick={handleCrearTurno}
+                  disabled={!nuevoTurno.idservicio || !nuevoTurno.idusuario_barbero || !nuevoTurno.hora_inicio || !nuevoTurno.fecha}
+                >
                   Crear Turno
                 </Button>
               </DialogFooter>
@@ -253,18 +243,17 @@ export default function AgendaPage() {
           </Dialog>
         }
       />
+
       <div className="flex-1 space-y-6 p-4 md:p-6">
         {/* Controls */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
-              <TabsList>
-                <TabsTrigger value="day">Dia</TabsTrigger>
-                <TabsTrigger value="week">Semana</TabsTrigger>
-                <TabsTrigger value="month">Mes</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs value={viewMode} onValueChange={v => setViewMode(v as typeof viewMode)}>
+            <TabsList>
+              <TabsTrigger value="day">Dia</TabsTrigger>
+              <TabsTrigger value="week">Semana</TabsTrigger>
+              <TabsTrigger value="month">Mes</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="flex items-center gap-2">
             <Select value={selectedBarberId} onValueChange={setSelectedBarberId}>
               <SelectTrigger className="w-[180px]">
@@ -272,26 +261,23 @@ export default function AgendaPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los barberos</SelectItem>
-                {activeBarbers.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.nombre}</SelectItem>
+                {barberos.map(b => (
+                  <SelectItem key={b.idusuario} value={String(b.idusuario)}>{b.persona.nombre_completo}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={() => {
-              setCurrentDate(new Date())
-              setSelectedDate(new Date())
-            }}>
+            <Button variant="outline" size="sm" onClick={() => { setCurrentDate(new Date()); setSelectedDate(new Date()) }}>
               Hoy
             </Button>
           </div>
         </div>
 
-        {/* Day View */}
+        {/* Vista Día */}
         {viewMode === 'day' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigateDay(-1)}>
+                <Button variant="ghost" size="icon" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d) }}>
                   <ChevronLeft className="size-4" />
                 </Button>
                 <div className="text-center">
@@ -302,56 +288,42 @@ export default function AgendaPage() {
                     {selectedDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => navigateDay(1)}>
+                <Button variant="ghost" size="icon" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d) }}>
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
-              <Badge variant="outline">
-                {getAppointmentsForDate(selectedDate).length} turnos
-              </Badge>
+              <Badge variant="outline">{getAppointmentsForDate(selectedDate).length} turnos</Badge>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
                   {horariosDisponibles.map(hora => {
-                    const appointments = getAppointmentsForDate(selectedDate)
-                      .filter(apt => apt.horaInicio === hora)
-                    
+                    const aptsHora = getAppointmentsForDate(selectedDate).filter(t => t.hora_inicio.slice(0, 5) === hora)
                     return (
                       <div key={hora} className="flex gap-4 border-b border-border/50 pb-2">
-                        <div className="w-16 shrink-0 pt-2 text-sm text-muted-foreground">
-                          {hora}
-                        </div>
+                        <div className="w-16 shrink-0 pt-2 text-sm text-muted-foreground">{hora}</div>
                         <div className="flex-1 min-h-[60px]">
-                          {appointments.length > 0 ? (
+                          {aptsHora.length > 0 ? (
                             <div className="space-y-2">
-                              {appointments.map(apt => {
-                                const status = statusConfig[apt.estado]
+                              {aptsHora.map(t => {
+                                const status = statusConfig[t.estado] ?? statusConfig.pendiente
                                 return (
-                                  <div
-                                    key={apt.id}
-                                    className={cn(
-                                      'rounded-lg border p-3 transition-colors hover:bg-muted/50',
-                                      status.bgColor
-                                    )}
-                                  >
+                                  <div key={t.idagenda} className={cn('rounded-lg border p-3 transition-colors hover:bg-muted/50', status.bgColor)}>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-3">
                                         <Avatar className="size-8">
                                           <AvatarFallback className="text-xs">
-                                            {getInitials(apt.cliente.nombre)}
+                                            {getInitials(t.cliente?.persona.nombre_completo ?? 'SC')}
                                           </AvatarFallback>
                                         </Avatar>
                                         <div>
-                                          <p className="font-medium text-sm">{apt.cliente.nombre}</p>
+                                          <p className="font-medium text-sm">{t.cliente?.persona.nombre_completo ?? 'Sin cliente'}</p>
                                           <p className="text-xs text-muted-foreground">
-                                            {apt.servicio.nombre} con {apt.barbero.nombre}
+                                            {t.servicio.nombre_servicio} con {t.barbero?.persona?.nombre_completo ?? '—'}
                                           </p>
                                         </div>
                                       </div>
-                                      <Badge variant="outline" className={status.color}>
-                                        {status.label}
-                                      </Badge>
+                                      <Badge variant="outline" className={status.color}>{status.label}</Badge>
                                     </div>
                                   </div>
                                 )
@@ -372,18 +344,18 @@ export default function AgendaPage() {
           </Card>
         )}
 
-        {/* Week View */}
+        {/* Vista Semana */}
         {viewMode === 'week' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigateWeek(-1)}>
+                <Button variant="ghost" size="icon" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 7); setSelectedDate(d) }}>
                   <ChevronLeft className="size-4" />
                 </Button>
                 <CardTitle className="text-lg">
-                  {weekDays[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} - {weekDays[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {weekDays[0].toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} — {weekDays[6].toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => navigateWeek(1)}>
+                <Button variant="ghost" size="icon" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 7); setSelectedDate(d) }}>
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -391,43 +363,23 @@ export default function AgendaPage() {
             <CardContent>
               <div className="grid grid-cols-7 gap-2">
                 {weekDays.map((day, i) => (
-                  <div 
-                    key={i} 
-                    className={cn(
-                      'min-h-[200px] rounded-lg border p-2',
-                      isToday(day) && 'border-primary',
-                      isSelected(day) && 'bg-muted/50'
-                    )}
-                  >
+                  <div key={i} className={cn('min-h-[200px] rounded-lg border p-2', isToday(day) && 'border-primary', isSelected(day) && 'bg-muted/50')}>
                     <div className="mb-2 text-center">
-                      <p className="text-xs text-muted-foreground">{daysOfWeek[i]}</p>
-                      <p className={cn(
-                        'text-sm font-medium',
-                        isToday(day) && 'text-primary'
-                      )}>
-                        {day.getDate()}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{daysOfWeek[day.getDay()]}</p>
+                      <p className={cn('text-sm font-medium', isToday(day) && 'text-primary')}>{day.getDate()}</p>
                     </div>
                     <div className="space-y-1">
-                      {getAppointmentsForDate(day).slice(0, 3).map(apt => {
-                        const status = statusConfig[apt.estado]
+                      {getAppointmentsForDate(day).slice(0, 3).map(t => {
+                        const status = statusConfig[t.estado] ?? statusConfig.pendiente
                         return (
-                          <div
-                            key={apt.id}
-                            className={cn(
-                              'rounded p-1 text-xs',
-                              status.bgColor
-                            )}
-                          >
-                            <p className="truncate font-medium">{apt.horaInicio}</p>
-                            <p className="truncate text-muted-foreground">{apt.cliente.nombre}</p>
+                          <div key={t.idagenda} className={cn('rounded p-1 text-xs', status.bgColor)}>
+                            <p className="truncate font-medium">{t.hora_inicio.slice(0, 5)}</p>
+                            <p className="truncate text-muted-foreground">{t.cliente?.persona.nombre_completo ?? 'Sin cliente'}</p>
                           </div>
                         )
                       })}
                       {getAppointmentsForDate(day).length > 3 && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          +{getAppointmentsForDate(day).length - 3} mas
-                        </p>
+                        <p className="text-xs text-muted-foreground text-center">+{getAppointmentsForDate(day).length - 3} mas</p>
                       )}
                     </div>
                   </div>
@@ -437,18 +389,18 @@ export default function AgendaPage() {
           </Card>
         )}
 
-        {/* Month View */}
+        {/* Vista Mes */}
         {viewMode === 'month' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth(-1)}>
+                <Button variant="ghost" size="icon" onClick={() => { const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d) }}>
                   <ChevronLeft className="size-4" />
                 </Button>
                 <CardTitle className="text-lg capitalize">
                   {currentDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
                 </CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth(1)}>
+                <Button variant="ghost" size="icon" onClick={() => { const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d) }}>
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -456,36 +408,20 @@ export default function AgendaPage() {
             <CardContent>
               <div className="grid grid-cols-7 gap-1">
                 {daysOfWeek.map(day => (
-                  <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
-                    {day}
-                  </div>
+                  <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">{day}</div>
                 ))}
                 {calendarDays.map(({ date, isCurrentMonth }, i) => {
-                  const dayAppointments = getAppointmentsForDate(date)
+                  const dayApts = getAppointmentsForDate(date)
                   return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setSelectedDate(date)
-                        setViewMode('day')
-                      }}
-                      className={cn(
-                        'min-h-[80px] rounded-lg border p-2 text-left transition-colors hover:bg-muted/50',
-                        !isCurrentMonth && 'opacity-40',
-                        isToday(date) && 'border-primary',
-                        isSelected(date) && 'bg-primary/10'
-                      )}
+                    <button key={i} onClick={() => { setSelectedDate(date); setViewMode('day') }}
+                      className={cn('min-h-[80px] rounded-lg border p-2 text-left transition-colors hover:bg-muted/50',
+                        !isCurrentMonth && 'opacity-40', isToday(date) && 'border-primary', isSelected(date) && 'bg-primary/10')}
                     >
-                      <p className={cn(
-                        'text-sm',
-                        isToday(date) && 'font-bold text-primary'
-                      )}>
-                        {date.getDate()}
-                      </p>
-                      {dayAppointments.length > 0 && (
+                      <p className={cn('text-sm', isToday(date) && 'font-bold text-primary')}>{date.getDate()}</p>
+                      {dayApts.length > 0 && (
                         <div className="mt-1">
                           <Badge variant="secondary" className="text-xs">
-                            {dayAppointments.length} turno{dayAppointments.length > 1 ? 's' : ''}
+                            {dayApts.length} turno{dayApts.length > 1 ? 's' : ''}
                           </Badge>
                         </div>
                       )}

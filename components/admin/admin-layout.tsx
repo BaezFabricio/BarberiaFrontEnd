@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
@@ -48,6 +48,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { notificaciones } from '@/lib/mock-data'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { authApi, api } from '@/lib/api'
+import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 import { AdminRouteTransition } from '@/components/admin/admin-route-transition'
 
 const menuItems = [
@@ -85,27 +87,57 @@ const menuItems = [
 ]
 
 function Logo() {
-  const [logoAvailable, setLogoAvailable] = useState(true)
+  const [barberia, setBarberia] = useState<{ nombre_negocio: string; logo_url?: string; color_primario?: string } | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    aplicarColorGuardado()
+    api.get<{ nombre_negocio: string; logo_url?: string; color_primario?: string }>('/mi-barberia')
+      .then(d => { setBarberia(d); if (d.color_primario) aplicarColor(d.color_primario, true) })
+      .catch(() => {})
+  }, [])
+
+  const handleLogoChange = async (file: File) => {
+    setUploading(true)
+    try {
+      const fd = new FormData(); fd.append('imagen', file)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/mi-barberia/logo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: fd,
+      })
+      const data = await res.json()
+      if (res.ok) setBarberia(p => p ? { ...p, logo_url: data.logo_url } : p)
+    } finally { setUploading(false) }
+  }
 
   return (
-    <Link href="/admin" className="flex items-center gap-3 px-2 py-1">
-      <div className="flex size-9 items-center justify-center overflow-hidden rounded-lg bg-transparent">
-        {logoAvailable ? (
-          <img
-            src="/logo.png"
-            alt="Barber Studio"
-            className="size-9 object-contain"
-            onError={() => setLogoAvailable(false)}
-          />
+    <div className="flex items-center gap-3 px-2 py-1">
+      <button
+        type="button"
+        title="Cambiar logo"
+        onClick={() => inputRef.current?.click()}
+        className="relative flex h-9 w-auto max-w-[48px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/30 px-1 transition-opacity hover:opacity-80"
+      >
+        {barberia?.logo_url ? (
+          <img src={barberia.logo_url} alt={barberia.nombre_negocio} className="h-7 w-auto max-w-[40px] object-contain" />
         ) : (
           <Scissors className="size-5 text-primary" />
         )}
-      </div>
-      <div className="flex flex-col">
-        <span className="text-sm font-bold text-foreground">Barber Studio</span>
-        <span className="text-xs text-muted-foreground">Sistema de Gestion</span>
-      </div>
-    </Link>
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+            <div className="size-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" className="hidden"
+          onChange={e => e.target.files?.[0] && handleLogoChange(e.target.files[0])} />
+      </button>
+      <Link href="/admin" className="flex flex-col">
+        <span className="text-sm font-bold text-foreground">{barberia?.nombre_negocio ?? 'Mi Barbería'}</span>
+        <span className="text-xs text-muted-foreground">Sistema de Gestión</span>
+      </Link>
+    </div>
   )
 }
 
@@ -121,6 +153,12 @@ function NotificationBadge() {
 
 function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    authApi.logout()
+    router.push('/login')
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -193,7 +231,7 @@ function AdminSidebar() {
                   Configuracion
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                   <LogOut className="mr-2 size-4" />
                   Cerrar Sesion
                 </DropdownMenuItem>

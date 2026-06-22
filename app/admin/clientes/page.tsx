@@ -1,249 +1,106 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AdminHeader } from '@/components/admin/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Plus, 
-  Search, 
-  MoreHorizontal, 
-  Pencil, 
-  Calendar,
-  Star,
-  Users,
-  UserPlus,
-  UserX,
-  Eye,
-  Mail,
-  Phone,
-  MessageCircle
-} from 'lucide-react'
-import { clientes, turnos } from '@/lib/mock-data'
-import { Client } from '@/lib/types'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Search, MoreHorizontal, Pencil, Users, UserPlus, Star } from 'lucide-react'
+import { api } from '@/lib/api'
+
+type Cliente = {
+  idcliente: number
+  notas_cliente: string | null
+  estado: string
+  createdAt: string
+  persona: { nombre_completo: string; telefono: string; correo_electronico: string | null; fecha_registro: string }
+}
+
 
 export default function ClientesPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'frecuentes' | 'nuevos' | 'inactivos'>('all')
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [busqueda, setBusqueda] = useState('')
+  const [filtro, setFiltro] = useState<'all' | 'nuevos'>('all')
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
+  const cargar = async () => {
+    try {
+      const data = await api.get<Cliente[]>('/clientes')
+      setClientes(data)
+    } catch { setClientes([]) }
   }
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Nunca'
-    return new Date(dateString).toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
-  }
+  useEffect(() => { cargar() }, [])
 
-  // Calculate inactive clients (60+ days without visit)
-  const isInactive = (client: Client) => {
-    if (!client.ultimaVisita) return true
-    const lastVisit = new Date(client.ultimaVisita)
-    const daysSinceVisit = Math.floor((Date.now() - lastVisit.getTime()) / (1000 * 60 * 60 * 24))
-    return daysSinceVisit >= 60
-  }
+  const treintaDiasAtras = new Date()
+  treintaDiasAtras.setDate(treintaDiasAtras.getDate() - 30)
 
-  const filteredClients = clientes.filter(client => {
-    const matchesSearch = client.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    if (!matchesSearch) return false
-    
-    switch (filterType) {
-      case 'frecuentes':
-        return client.esClienteFrecuente
-      case 'nuevos':
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        return new Date(client.fechaRegistro) >= thirtyDaysAgo
-      case 'inactivos':
-        return isInactive(client)
-      default:
-        return true
-    }
+  const filtrados = clientes.filter(c => {
+    const matchBusqueda = c.persona.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (c.persona.correo_electronico ?? '').toLowerCase().includes(busqueda.toLowerCase())
+    if (!matchBusqueda) return false
+    if (filtro === 'nuevos') return new Date(c.persona.fecha_registro) >= treintaDiasAtras
+    return true
   })
 
-  const totalClients = clientes.length
-  const frequentClients = clientes.filter(c => c.esClienteFrecuente).length
-  const newClientsMonth = clientes.filter(c => {
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    return new Date(c.fechaRegistro) >= thirtyDaysAgo
-  }).length
-  const inactiveClients = clientes.filter(c => isInactive(c)).length
+  const nuevos = clientes.filter(c => new Date(c.persona.fecha_registro) >= treintaDiasAtras).length
+  const getInitials = (n: string) => n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2)
+  const formatFecha = (f: string) => new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
 
   return (
     <>
-      <AdminHeader 
-        title="Clientes" 
-        description="Gestiona la base de clientes"
-        actions={
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="size-4" />
-                <span className="hidden sm:inline">Nuevo Cliente</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Registrar Cliente</DialogTitle>
-                <DialogDescription>
-                  Completa los datos del nuevo cliente
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="nombre">Nombre completo</Label>
-                  <Input id="nombre" placeholder="Ej: Juan Perez" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Correo electronico</Label>
-                  <Input id="email" type="email" placeholder="juan@email.com" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="telefono">Telefono</Label>
-                  <Input id="telefono" placeholder="+54 11 1234-5678" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="notas">Notas (opcional)</Label>
-                  <Input id="notas" placeholder="Preferencias, observaciones..." />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => setIsCreateDialogOpen(false)}>
-                  Guardar
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        }
+      <AdminHeader
+        title="Clientes"
+        description="Los clientes se registran automáticamente al sacar un turno"
       />
+
       <div className="flex-1 space-y-6 p-4 md:p-6">
-        {/* Stats Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={() => setFilterType('all')}>
+        {/* Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="cursor-pointer hover:bg-muted/50" onClick={() => setFiltro('all')}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Clientes
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clientes</CardTitle>
               <Users className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalClients}</div>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{clientes.length}</div></CardContent>
           </Card>
-          <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={() => setFilterType('frecuentes')}>
+          <Card className="cursor-pointer hover:bg-muted/50" onClick={() => setFiltro('nuevos')}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Frecuentes
-              </CardTitle>
-              <Star className="size-4 text-primary" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Nuevos (30 días)</CardTitle>
+              <UserPlus className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{frequentClients}</div>
-              <p className="text-xs text-muted-foreground">mas de 10 turnos</p>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{nuevos}</div></CardContent>
           </Card>
-          <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={() => setFilterType('nuevos')}>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Nuevos (30 dias)
-              </CardTitle>
-              <UserPlus className="size-4 text-success" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Mostrando</CardTitle>
+              <Star className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{newClientsMonth}</div>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={() => setFilterType('inactivos')}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Inactivos
-              </CardTitle>
-              <UserX className="size-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{inactiveClients}</div>
-              <p className="text-xs text-muted-foreground">60+ dias sin visita</p>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{filtrados.length}</div></CardContent>
           </Card>
         </div>
 
-        {/* Search and Filters */}
+        {/* Búsqueda */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre o email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+            <Input placeholder="Buscar por nombre o email..." value={busqueda}
+              onChange={e => setBusqueda(e.target.value)} className="pl-9" />
           </div>
-          <Select value={filterType} onValueChange={(v) => setFilterType(v as typeof filterType)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por" />
-            </SelectTrigger>
+          <Select value={filtro} onValueChange={v => setFiltro(v as typeof filtro)}>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="frecuentes">Frecuentes</SelectItem>
-              <SelectItem value="nuevos">Nuevos</SelectItem>
-              <SelectItem value="inactivos">Inactivos</SelectItem>
+              <SelectItem value="nuevos">Nuevos (30 días)</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Table */}
+        {/* Tabla */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -251,59 +108,48 @@ export default function ClientesPage() {
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Contacto</TableHead>
-                  <TableHead className="hidden sm:table-cell">Turnos</TableHead>
-                  <TableHead className="hidden lg:table-cell">Ultima Visita</TableHead>
+                  <TableHead className="hidden lg:table-cell">Registro</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.map((client) => (
-                  <TableRow key={client.id}>
+                {filtrados.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                      No hay clientes todavía
+                    </TableCell>
+                  </TableRow>
+                ) : filtrados.map(c => (
+                  <TableRow key={c.idcliente}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="size-10">
                           <AvatarFallback className="bg-secondary text-secondary-foreground">
-                            {getInitials(client.nombre)}
+                            {getInitials(c.persona.nombre_completo)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{client.nombre}</p>
-                          {client.notas && (
-                            <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                              {client.notas}
-                            </p>
+                          <p className="font-medium">{c.persona.nombre_completo}</p>
+                          {c.notas_cliente && (
+                            <p className="max-w-[150px] truncate text-xs text-muted-foreground">{c.notas_cliente}</p>
                           )}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <div className="text-sm">
-                        <p>{client.email}</p>
-                        <p className="text-muted-foreground">{client.telefono}</p>
+                        <p>{c.persona.correo_electronico ?? '—'}</p>
+                        <p className="text-muted-foreground">{c.persona.telefono}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="flex items-center gap-1">
-                        <span className="font-medium">{client.turnosTotales}</span>
-                        {client.esClienteFrecuente && (
-                          <Star className="size-3 fill-primary text-primary" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {formatDate(client.ultimaVisita)}
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      {formatFecha(c.persona.fecha_registro)}
                     </TableCell>
                     <TableCell>
-                      {isInactive(client) ? (
-                        <Badge variant="outline" className="text-warning border-warning">
-                          Inactivo
-                        </Badge>
-                      ) : client.esClienteFrecuente ? (
-                        <Badge variant="default">Frecuente</Badge>
-                      ) : (
-                        <Badge variant="secondary">Regular</Badge>
-                      )}
+                      <Badge variant={c.estado === 'activo' ? 'secondary' : 'outline'}>
+                        {c.estado === 'activo' ? 'Regular' : 'Inactivo'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -313,27 +159,7 @@ export default function ClientesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 size-4" />
-                            Ver historial
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Calendar className="mr-2 size-4" />
-                            Agendar turno
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 size-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Mail className="mr-2 size-4" />
-                            Enviar email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <MessageCircle className="mr-2 size-4" />
-                            Enviar WhatsApp
-                          </DropdownMenuItem>
+                          <DropdownMenuItem><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

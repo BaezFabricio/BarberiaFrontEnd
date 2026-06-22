@@ -14,13 +14,16 @@ import {
 import { Appointment, AppointmentStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const statusConfig: Record<AppointmentStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ElementType }> = {
-  reservado: { label: 'Reservado', variant: 'secondary', icon: Clock },
-  confirmado: { label: 'Confirmado', variant: 'default', icon: CheckCircle },
-  finalizado: { label: 'Finalizado', variant: 'outline', icon: CheckCircle },
-  cancelado: { label: 'Cancelado', variant: 'destructive', icon: XCircle },
-  ausente: { label: 'Ausente', variant: 'destructive', icon: AlertCircle },
+const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ElementType }> = {
+  pendiente:  { label: 'Pendiente',  variant: 'secondary',    icon: Clock },
+  reservado:  { label: 'Reservado',  variant: 'secondary',    icon: Clock },
+  confirmado: { label: 'Confirmado', variant: 'default',      icon: CheckCircle },
+  finalizado: { label: 'Finalizado', variant: 'outline',      icon: CheckCircle },
+  cancelado:  { label: 'Cancelado',  variant: 'destructive',  icon: XCircle },
+  ausente:    { label: 'Ausente',    variant: 'destructive',  icon: AlertCircle },
 }
+
+const defaultStatus = { label: 'Pendiente', variant: 'secondary' as const, icon: Clock }
 
 interface TodayAppointmentsProps {
   appointments: Appointment[]
@@ -61,7 +64,7 @@ export function TodayAppointments({ appointments, onStatusChange }: TodayAppoint
             </div>
           ) : (
             sortedAppointments.map((appointment) => {
-              const status = statusConfig[appointment.estado]
+              const status = statusConfig[appointment.estado] ?? defaultStatus
               const StatusIcon = status.icon
               return (
                 <div
