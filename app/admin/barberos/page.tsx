@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Image from 'next/image'
@@ -22,6 +22,8 @@ type Barbero = {
   rol: string
   rating_promedio: number
   comision_porcentaje: number
+  puede_cobrar?: boolean
+  puede_vender?: boolean
   estado?: string
   persona: { nombre_completo: string; telefono: string; correo_electronico: string; foto_url?: string }
 }
@@ -76,6 +78,12 @@ export default function BarberosPage() {
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [errorFoto, setErrorFoto] = useState('')
 
+  const [editBarbero, setEditBarbero] = useState<Barbero | null>(null)
+  const [modalEditar, setModalEditar] = useState(false)
+  const [formEditar, setFormEditar] = useState({ nombre_completo: '', telefono: '', correo_electronico: '', comision_porcentaje: '', puede_cobrar: false, puede_vender: false })
+  const [loadingEditar, setLoadingEditar] = useState(false)
+  const [errorEditar, setErrorEditar] = useState('')
+
   const cargar = async () => {
     try { setBarberos(await api.get<Barbero[]>('/barberos')) } catch { setBarberos([]) }
   }
@@ -102,7 +110,7 @@ export default function BarberosPage() {
 
   const toggleEstado = async (b: Barbero) => {
     const nuevoEstado = (b.estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo'
-    await api.post(`/barberos/${b.idusuario}/estado`, { estado: nuevoEstado })
+    await api.patch(`/barberos/${b.idusuario}/estado`, { estado: nuevoEstado })
     cargar()
   }
 
@@ -175,6 +183,25 @@ export default function BarberosPage() {
     })
   }
 
+  const abrirEditar = (b: Barbero) => {
+    setEditBarbero(b)
+    setFormEditar({ nombre_completo: b.persona.nombre_completo, telefono: b.persona.telefono, correo_electronico: b.persona.correo_electronico, comision_porcentaje: String(b.comision_porcentaje), puede_cobrar: !!b.puede_cobrar, puede_vender: !!b.puede_vender })
+    setErrorEditar('')
+    setModalEditar(true)
+  }
+
+  const handleGuardarEditar = async () => {
+    if (!editBarbero) return
+    setLoadingEditar(true); setErrorEditar('')
+    try {
+      await api.put(`/barberos/${editBarbero.idusuario}`, { ...formEditar, comision_porcentaje: Number(formEditar.comision_porcentaje) })
+      setModalEditar(false)
+      cargar()
+    } catch (err: unknown) {
+      setErrorEditar(err instanceof Error ? err.message : 'Error al guardar.')
+    } finally { setLoadingEditar(false) }
+  }
+
   const iniciales = (n: string) => n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2)
   const filtrados = barberos.filter(b => b.persona.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()))
 
@@ -229,7 +256,7 @@ export default function BarberosPage() {
         ) : (
           <Card>
             <CardContent className="p-0">
-              <Table>
+              <div className="overflow-x-auto"><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Barbero</TableHead>
@@ -276,6 +303,9 @@ export default function BarberosPage() {
                             <Button variant="ghost" size="icon" className="size-8"><MoreHorizontal className="size-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => abrirEditar(b)}>
+                              <Pencil className="mr-2 size-4" />Editar datos
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setFotoBarbero(b); setErrorFoto(''); setModalFoto(true) }}>
                               <Users className="mr-2 size-4" />Cambiar foto de perfil
                             </DropdownMenuItem>
@@ -293,7 +323,7 @@ export default function BarberosPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </Table></div>
             </CardContent>
           </Card>
         )}
@@ -410,6 +440,54 @@ export default function BarberosPage() {
             <Button onClick={handleGuardarHorarios} disabled={loadingHorarios}>
               {loadingHorarios ? 'Guardando...' : 'Guardar horarios'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal editar barbero */}
+      <Dialog open={modalEditar} onOpenChange={setModalEditar}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar barbero</DialogTitle>
+            <DialogDescription>Modificá los datos de {editBarbero?.persona.nombre_completo}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nombre completo</Label>
+              <Input value={formEditar.nombre_completo} onChange={e => setFormEditar(p => ({ ...p, nombre_completo: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Teléfono (WhatsApp)</Label>
+              <Input value={formEditar.telefono} onChange={e => setFormEditar(p => ({ ...p, telefono: e.target.value }))} placeholder="+54 9 11 1234-5678" />
+              <p className="text-xs text-muted-foreground">Este número recibe los avisos de turnos nuevos</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Correo electrónico</Label>
+              <Input type="email" value={formEditar.correo_electronico} onChange={e => setFormEditar(p => ({ ...p, correo_electronico: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Comisión (%)</Label>
+              <Input type="number" min="0" max="100" value={formEditar.comision_porcentaje} onChange={e => setFormEditar(p => ({ ...p, comision_porcentaje: e.target.value }))} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Puede registrar cobros</p>
+                <p className="text-xs text-muted-foreground">Verá la pestaña Caja en su panel</p>
+              </div>
+              <Switch checked={formEditar.puede_cobrar} onCheckedChange={v => setFormEditar(p => ({ ...p, puede_cobrar: v }))} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Puede vender productos</p>
+                <p className="text-xs text-muted-foreground">Verá la pestaña Productos en su panel</p>
+              </div>
+              <Switch checked={formEditar.puede_vender} onCheckedChange={v => setFormEditar(p => ({ ...p, puede_vender: v }))} />
+            </div>
+            {errorEditar && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorEditar}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalEditar(false)}>Cancelar</Button>
+            <Button onClick={handleGuardarEditar} disabled={loadingEditar}>{loadingEditar ? 'Guardando...' : 'Guardar cambios'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

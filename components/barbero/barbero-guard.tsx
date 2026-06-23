@@ -13,8 +13,7 @@ export function BarberoGuard({ children }: { children: React.ReactNode }) {
 
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
-      if (payload.rol === 'admin') { router.replace('/admin'); return }
-      if (payload.rol !== 'barbero') { router.replace('/login'); return }
+      if (payload.rol !== 'barbero' && payload.rol !== 'owner' && payload.rol !== 'admin') { router.replace('/login'); return }
       setVerificado(true)
     } catch {
       router.replace('/login')

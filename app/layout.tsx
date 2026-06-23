@@ -49,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className="bg-background">
+    <html lang="es" className="bg-background" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
 (function(){

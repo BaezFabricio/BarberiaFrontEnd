@@ -1,425 +1,241 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { AdminHeader } from '@/components/admin/admin-layout'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Separator } from '@/components/ui/separator'
-import { 
-  Plus, 
-  Search, 
-  DollarSign,
-  CreditCard,
-  Banknote,
-  TrendingUp,
-  ShoppingBag,
-  Scissors,
-  Check
-} from 'lucide-react'
-import { ventas, turnos, productos, servicios, clientes, barberos } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DollarSign, CreditCard, Banknote, Smartphone, Plus, Scissors, Calendar, ShoppingBag } from 'lucide-react'
+import { api } from '@/lib/api'
+
+type Turno = {
+  idagenda: number
+  fecha: string
+  hora_inicio: string
+  servicio: { nombre_servicio: string; precio: number }
+  cliente: { persona: { nombre_completo: string } }
+  barbero: { persona: { nombre_completo: string } }
+}
+
+type Pago = {
+  idpago: number
+  monto_pago: string
+  metodo_pago: string
+  fecha_pago: string
+  agenda_turno: Turno
+}
+
+type Resumen = { total: number; efectivo: number; transferencia: number; tarjeta: number; cantidad: number }
+type Producto = { idproducto: number; nombre_producto: string; precio_venta: number; stock_actual: number }
+type Venta = {
+  idventa: number; cantidad: number; monto_total: string; metodo_pago: string; fecha_venta: string
+  producto: { nombre_producto: string }
+  barbero: { persona: { nombre_completo: string } }
+  cliente?: { persona: { nombre_completo: string } }
+}
+
+const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n)
+const fmtFecha = (f: string) => new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+
+const hoy = () => new Date().toISOString().split('T')[0]
 
 export default function PagosPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'servicios' | 'productos'>('servicios')
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false)
+  const [pagos, setPagos] = useState<Pago[]>([])
+  const [pendientes, setPendientes] = useState<Turno[]>([])
+  const [resumen, setResumen] = useState<Resumen>({ total: 0, efectivo: 0, transferencia: 0, tarjeta: 0, cantidad: 0 })
+  const [desde, setDesde] = useState(hoy())
+  const [hasta, setHasta] = useState(hoy())
+  const [modal, setModal] = useState(false)
+  const [turnoSel, setTurnoSel] = useState<Turno | null>(null)
+  const [metodo, setMetodo] = useState<string>('efectivo')
+  const [monto, setMonto] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
 
-  // Estado para el nuevo formulario de pago
-  const [selectedClienteId, setSelectedClienteId] = useState<string>('')
-  const [selectedServicios, setSelectedServicios] = useState<string[]>([])
-  const [metodoPago, setMetodoPago] = useState<string>('efectivo')
+  // Ventas de productos
+  const [ventas, setVentas] = useState<Venta[]>([])
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [modalVenta, setModalVenta] = useState(false)
+  const [formVenta, setFormVenta] = useState({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
+  const [guardandoVenta, setGuardandoVenta] = useState(false)
+  const [errorVenta, setErrorVenta] = useState('')
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0
-    }).format(amount)
+  const cargar = async () => {
+    try {
+      const [p, r, v] = await Promise.all([
+        api.get<Pago[]>(`/pagos?desde=${desde}&hasta=${hasta}`),
+        api.get<Resumen>(`/pagos/resumen?desde=${desde}&hasta=${hasta}`),
+        api.get<Venta[]>(`/ventas?desde=${desde}&hasta=${hasta}`),
+      ])
+      setPagos(p); setResumen(r); setVentas(v)
+    } catch { setPagos([]); setResumen({ total: 0, efectivo: 0, transferencia: 0, tarjeta: 0, cantidad: 0 }); setVentas([]) }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
+  const cargarProductos = async () => {
+    try { setProductos(await api.get<Producto[]>('/productos')) } catch { setProductos([]) }
   }
 
-  // Calcular subtotales de servicios seleccionados
-  const serviciosSeleccionados = useMemo(() => {
-    return servicios.filter(s => selectedServicios.includes(s.id))
-  }, [selectedServicios])
-
-  const subtotalGeneral = useMemo(() => {
-    return serviciosSeleccionados.reduce((acc, s) => acc + s.precio, 0)
-  }, [serviciosSeleccionados])
-
-  // Toggle servicio seleccionado
-  const toggleServicio = (servicioId: string) => {
-    setSelectedServicios(prev => 
-      prev.includes(servicioId) 
-        ? prev.filter(id => id !== servicioId)
-        : [...prev, servicioId]
-    )
+  const cargarPendientes = async () => {
+    try { setPendientes(await api.get<Turno[]>('/pagos/turnos-pendientes')) }
+    catch { setPendientes([]) }
   }
 
-  // Resetear formulario
-  const resetPaymentForm = () => {
-    setSelectedClienteId('')
-    setSelectedServicios([])
-    setMetodoPago('efectivo')
+  useEffect(() => { cargar() }, [desde, hasta])
+  useEffect(() => { cargarPendientes(); cargarProductos() }, [])
+
+  const registrarVenta = async () => {
+    setGuardandoVenta(true); setErrorVenta('')
+    try {
+      await api.post('/ventas', { idproducto: Number(formVenta.idproducto), cantidad: Number(formVenta.cantidad), metodo_pago: formVenta.metodo_pago })
+      setModalVenta(false); setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); cargar(); cargarProductos()
+    } catch (e: unknown) { setErrorVenta(e instanceof Error ? e.message : 'Error') }
+    finally { setGuardandoVenta(false) }
   }
 
-  // Calculate stats
-  const completedAppointments = turnos.filter(t => t.estado === 'finalizado')
-  const totalServiceIncome = completedAppointments.reduce((acc, t) => acc + t.precioFinal, 0)
-  const totalProductSales = ventas.reduce((acc, v) => acc + v.total, 0)
-  const totalIncome = totalServiceIncome + totalProductSales
+  const productoSel = productos.find(p => p.idproducto === Number(formVenta.idproducto))
 
-  const cashPayments = ventas.filter(v => v.metodoPago === 'efectivo')
-    .reduce((acc, v) => acc + v.total, 0)
-  const transferPayments = ventas.filter(v => v.metodoPago === 'transferencia')
-    .reduce((acc, v) => acc + v.total, 0)
+  const abrirModal = (t: Turno) => {
+    setTurnoSel(t)
+    setMonto(String(t.servicio.precio))
+    setMetodo('efectivo')
+    setError('')
+    setModal(true)
+  }
+
+  const registrarPago = async () => {
+    if (!turnoSel) return
+    setGuardando(true); setError('')
+    try {
+      await api.post('/pagos', { idagenda: turnoSel.idagenda, monto_pago: Number(monto), metodo_pago: metodo })
+      setModal(false)
+      cargar()
+      cargarPendientes()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al registrar')
+    } finally { setGuardando(false) }
+  }
+
+  const metodoBadge = (m: string) => {
+    if (m === 'efectivo') return <Badge variant="outline" className="gap-1"><Banknote className="size-3" />Efectivo</Badge>
+    if (m === 'transferencia') return <Badge variant="outline" className="gap-1"><Smartphone className="size-3" />Transferencia</Badge>
+    return <Badge variant="outline" className="gap-1"><CreditCard className="size-3" />Tarjeta</Badge>
+  }
 
   return (
     <>
-      <AdminHeader 
-        title="Pagos y Ventas" 
-        description="Registro de ingresos por servicios y productos"
+      <AdminHeader
+        title="Caja"
+        description="Registro de cobros por servicios"
         actions={
-          <div className="flex gap-2">
-            <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
-              setIsPaymentDialogOpen(open)
-              if (!open) resetPaymentForm()
-            }}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <CreditCard className="size-4" />
-                  <span className="hidden sm:inline">Registrar Pago</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Registrar Pago de Servicio</DialogTitle>
-                  <DialogDescription>
-                    Selecciona el cliente y los servicios realizados
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  {/* 1. Cliente */}
-                  <div className="grid gap-2">
-                    <Label>Cliente</Label>
-                    <Select value={selectedClienteId} onValueChange={setSelectedClienteId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Buscar o seleccionar cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clientes.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Separator />
-
-                  {/* 2. Servicios */}
-                  <div className="grid gap-2">
-                    <Label>Servicios realizados</Label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto rounded-lg border border-border p-3">
-                      {servicios.filter(s => s.activo).map(servicio => (
-                        <div 
-                          key={servicio.id}
-                          className={cn(
-                            "flex items-center justify-between rounded-lg p-2 transition-colors cursor-pointer",
-                            selectedServicios.includes(servicio.id) 
-                              ? "bg-primary/10 border border-primary/30" 
-                              : "hover:bg-muted"
-                          )}
-                          onClick={() => toggleServicio(servicio.id)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Checkbox 
-                              checked={selectedServicios.includes(servicio.id)}
-                              onCheckedChange={() => toggleServicio(servicio.id)}
-                            />
-                            <span className="text-sm font-medium">{servicio.nombre}</span>
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {formatCurrency(servicio.precio)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 3. Subtotal por servicio */}
-                  {serviciosSeleccionados.length > 0 && (
-                    <>
-                      <Separator />
-                      <div className="grid gap-2">
-                        <Label>Detalle de servicios</Label>
-                        <div className="space-y-1 rounded-lg bg-muted p-3">
-                          {serviciosSeleccionados.map(s => (
-                            <div key={s.id} className="flex items-center justify-between text-sm">
-                              <span>{s.nombre}</span>
-                              <span className="font-mono">{formatCurrency(s.precio)}</span>
-                            </div>
-                          ))}
-                          <Separator className="my-2" />
-                          <div className="flex items-center justify-between font-medium">
-                            <span>Subtotal</span>
-                            <span className="font-mono">{formatCurrency(subtotalGeneral)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <Separator />
-
-                  {/* 4. Metodo de pago */}
-                  <div className="grid gap-2">
-                    <Label>Metodo de pago</Label>
-                    <Select value={metodoPago} onValueChange={setMetodoPago}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="efectivo">
-                          <div className="flex items-center gap-2">
-                            <Banknote className="size-4" />
-                            Efectivo
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="transferencia">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="size-4" />
-                            Transferencia
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* 5. Total destacado */}
-                  {serviciosSeleccionados.length > 0 && (
-                    <div className="rounded-lg bg-primary/10 border border-primary/30 p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-medium">Total a cobrar</span>
-                        <span className="text-2xl font-bold text-primary">
-                          {formatCurrency(subtotalGeneral)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => {
-                    setIsPaymentDialogOpen(false)
-                    resetPaymentForm()
-                  }}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      setIsPaymentDialogOpen(false)
-                      resetPaymentForm()
-                    }}
-                    disabled={!selectedClienteId || serviciosSeleccionados.length === 0}
-                  >
-                    <Check className="mr-2 size-4" />
-                    Registrar Pago
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isSaleDialogOpen} onOpenChange={setIsSaleDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="size-4" />
-                  <span className="hidden sm:inline">Nueva Venta</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Registrar Venta de Producto</DialogTitle>
-                  <DialogDescription>
-                    Registra la venta de productos
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label>Producto</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar producto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productos.filter(p => p.stock > 0).map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.nombre} - {formatCurrency(p.precio)} ({p.stock} disp.)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Cantidad</Label>
-                    <Input type="number" defaultValue={1} min={1} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Cliente (opcional)</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clientes.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Metodo de pago</Label>
-                    <Select defaultValue="efectivo">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                        <SelectItem value="transferencia">Transferencia</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsSaleDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={() => setIsSaleDialogOpen(false)}>
-                    Registrar Venta
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+          <div className="flex items-center gap-2">
+            <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36 text-sm" />
+            <span className="text-muted-foreground text-sm">—</span>
+            <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36 text-sm" />
+            <Button size="sm" className="gap-2" onClick={() => { setErrorVenta(''); setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setModalVenta(true) }}>
+              <ShoppingBag className="size-4" /><span className="hidden sm:inline">Nueva Venta</span>
+            </Button>
           </div>
         }
       />
+
       <div className="flex-1 space-y-6 p-4 md:p-6">
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Ingresos Totales
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total del período</CardTitle>
               <DollarSign className="size-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalIncome)}</div>
-              <p className="text-xs text-muted-foreground">este periodo</p>
+              <div className="text-2xl font-bold text-primary">{fmt(resumen.total)}</div>
+              <p className="text-xs text-muted-foreground">{resumen.cantidad} cobros</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Por Servicios
-              </CardTitle>
-              <Scissors className="size-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Efectivo</CardTitle>
+              <Banknote className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalServiceIncome)}</div>
-              <p className="text-xs text-muted-foreground">{completedAppointments.length} turnos</p>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{fmt(resumen.efectivo)}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Por Productos
-              </CardTitle>
-              <ShoppingBag className="size-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Transferencia</CardTitle>
+              <Smartphone className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalProductSales)}</div>
-              <p className="text-xs text-muted-foreground">{ventas.length} ventas</p>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{fmt(resumen.transferencia)}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Metodos de Pago
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tarjeta</CardTitle>
               <CreditCard className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-1">
-                  <Banknote className="size-4 text-success" />
-                  {formatCurrency(cashPayments)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <CreditCard className="size-4 text-info" />
-                  {formatCurrency(transferPayments)}
-                </span>
-              </div>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{fmt(resumen.tarjeta)}</div></CardContent>
           </Card>
         </div>
 
-        {/* Tabs for Sales Types */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        {/* Turnos sin cobrar */}
+        {pendientes.length > 0 && (
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Scissors className="size-4 text-yellow-500" />
+                Turnos atendidos sin cobrar ({pendientes.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto"><Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="hidden sm:table-cell">Servicio</TableHead>
+                    <TableHead className="hidden md:table-cell">Barbero</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Precio</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendientes.map(t => (
+                    <TableRow key={t.idagenda}>
+                      <TableCell className="font-medium">{t.cliente?.persona?.nombre_completo ?? '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{t.servicio?.nombre_servicio}</TableCell>
+                      <TableCell className="hidden md:table-cell">{t.barbero?.persona?.nombre_completo ?? '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1"><Calendar className="size-3" />{fmtFecha(t.fecha)}</span>
+                      </TableCell>
+                      <TableCell className="font-semibold">{fmt(t.servicio?.precio ?? 0)}</TableCell>
+                      <TableCell>
+                        <Button size="sm" className="gap-1 h-7" onClick={() => abrirModal(t)}>
+                          <Plus className="size-3" />Cobrar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table></div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tabs servicios / productos */}
+        <Tabs defaultValue="servicios">
           <TabsList>
-            <TabsTrigger value="servicios" className="gap-2">
-              <Scissors className="size-4" />
-              Servicios
-            </TabsTrigger>
-            <TabsTrigger value="productos" className="gap-2">
-              <ShoppingBag className="size-4" />
-              Productos
-            </TabsTrigger>
+            <TabsTrigger value="servicios" className="gap-2"><Scissors className="size-4" />Servicios</TabsTrigger>
+            <TabsTrigger value="productos" className="gap-2"><ShoppingBag className="size-4" />Productos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="servicios" className="mt-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Pagos por Servicios</CardTitle>
-                <CardDescription>Historial de pagos por turnos completados</CardDescription>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-base">Historial de cobros</CardTitle></CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <div className="overflow-x-auto"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Fecha</TableHead>
@@ -427,90 +243,152 @@ export default function PagosPage() {
                       <TableHead className="hidden md:table-cell">Servicio</TableHead>
                       <TableHead className="hidden sm:table-cell">Barbero</TableHead>
                       <TableHead>Monto</TableHead>
-                      <TableHead className="hidden sm:table-cell">Metodo</TableHead>
+                      <TableHead className="hidden sm:table-cell">Método</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {completedAppointments.map(apt => (
-                      <TableRow key={apt.id}>
-                        <TableCell>{formatDate(apt.fecha)}</TableCell>
-                        <TableCell className="font-medium">{apt.cliente.nombre}</TableCell>
-                        <TableCell className="hidden md:table-cell">{apt.servicio.nombre}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{apt.barbero.nombre}</TableCell>
-                        <TableCell className="font-semibold text-success">
-                          {formatCurrency(apt.precioFinal)}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline">
-                            <Banknote className="mr-1 size-3" />
-                            Efectivo
-                          </Badge>
-                        </TableCell>
+                    {pagos.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No hay cobros en este período</TableCell></TableRow>
+                    ) : pagos.map(p => (
+                      <TableRow key={p.idpago}>
+                        <TableCell className="text-sm text-muted-foreground">{fmtFecha(p.fecha_pago)}</TableCell>
+                        <TableCell className="font-medium">{p.agenda_turno?.cliente?.persona?.nombre_completo ?? '—'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{p.agenda_turno?.servicio?.nombre_servicio ?? '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{p.agenda_turno?.barbero?.persona?.nombre_completo ?? '—'}</TableCell>
+                        <TableCell className="font-semibold text-green-500">{fmt(parseFloat(p.monto_pago))}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{metodoBadge(p.metodo_pago)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </Table></div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="productos" className="mt-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Ventas de Productos</CardTitle>
-                <CardDescription>Historial de ventas de productos</CardDescription>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-base">Ventas de productos</CardTitle></CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <div className="overflow-x-auto"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Fecha</TableHead>
-                      <TableHead>Productos</TableHead>
-                      <TableHead className="hidden sm:table-cell">Cliente</TableHead>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="hidden sm:table-cell">Cantidad</TableHead>
+                      <TableHead className="hidden sm:table-cell">Barbero</TableHead>
                       <TableHead>Total</TableHead>
-                      <TableHead className="hidden sm:table-cell">Metodo</TableHead>
+                      <TableHead className="hidden sm:table-cell">Método</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ventas.map(venta => (
-                      <TableRow key={venta.id}>
-                        <TableCell>{formatDate(venta.fecha)}</TableCell>
-                        <TableCell>
-                          <div className="max-w-[200px]">
-                            {venta.productos.map((item, i) => (
-                              <p key={i} className="truncate text-sm">
-                                {item.cantidad}x {item.producto.nombre}
-                              </p>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          {venta.clienteId 
-                            ? clientes.find(c => c.id === venta.clienteId)?.nombre 
-                            : '-'
-                          }
-                        </TableCell>
-                        <TableCell className="font-semibold text-success">
-                          {formatCurrency(venta.total)}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline">
-                            {venta.metodoPago === 'efectivo' ? (
-                              <><Banknote className="mr-1 size-3" /> Efectivo</>
-                            ) : (
-                              <><CreditCard className="mr-1 size-3" /> Transferencia</>
-                            )}
-                          </Badge>
-                        </TableCell>
+                    {ventas.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No hay ventas en este período</TableCell></TableRow>
+                    ) : ventas.map(v => (
+                      <TableRow key={v.idventa}>
+                        <TableCell className="text-sm text-muted-foreground">{fmtFecha(v.fecha_venta)}</TableCell>
+                        <TableCell className="font-medium">{v.producto?.nombre_producto ?? '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{v.cantidad}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{v.barbero?.persona?.nombre_completo ?? '—'}</TableCell>
+                        <TableCell className="font-semibold text-green-500">{fmt(parseFloat(v.monto_total))}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{metodoBadge(v.metodo_pago)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </Table></div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal nueva venta */}
+      <Dialog open={modalVenta} onOpenChange={setModalVenta}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar venta de producto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Producto</Label>
+              <Select value={formVenta.idproducto} onValueChange={v => setFormVenta(p => ({ ...p, idproducto: v }))}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
+                <SelectContent>
+                  {productos.filter(p => p.stock_actual > 0).map(p => (
+                    <SelectItem key={p.idproducto} value={String(p.idproducto)}>
+                      {p.nombre_producto} — {fmt(p.precio_venta)} (stock: {p.stock_actual})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cantidad</Label>
+              <Input type="number" min="1" max={productoSel?.stock_actual ?? 99} value={formVenta.cantidad}
+                onChange={e => setFormVenta(p => ({ ...p, cantidad: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Método de pago</Label>
+              <Select value={formVenta.metodo_pago} onValueChange={v => setFormVenta(p => ({ ...p, metodo_pago: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {productoSel && (
+              <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 flex justify-between items-center">
+                <span className="text-sm">Total</span>
+                <span className="font-bold text-primary">{fmt(productoSel.precio_venta * Number(formVenta.cantidad))}</span>
+              </div>
+            )}
+            {errorVenta && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorVenta}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalVenta(false)}>Cancelar</Button>
+            <Button onClick={registrarVenta} disabled={guardandoVenta || !formVenta.idproducto}>
+              {guardandoVenta ? 'Guardando...' : 'Confirmar venta'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal registrar cobro */}
+      <Dialog open={modal} onOpenChange={setModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar cobro</DialogTitle>
+            <DialogDescription>
+              {turnoSel?.cliente?.persona?.nombre_completo ?? ''} · {turnoSel?.servicio?.nombre_servicio ?? ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Monto</Label>
+              <Input type="number" value={monto} onChange={e => setMonto(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Método de pago</Label>
+              <Select value={metodo} onValueChange={setMetodo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModal(false)}>Cancelar</Button>
+            <Button onClick={registrarPago} disabled={guardando || !monto}>
+              {guardando ? 'Guardando...' : 'Confirmar cobro'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

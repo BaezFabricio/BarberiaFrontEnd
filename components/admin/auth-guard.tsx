@@ -21,7 +21,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace('/login')
     } else if (rol === 'barbero') {
       router.replace('/barbero')
-    } else if (rol === 'admin') {
+    } else if (rol === 'admin' || rol === 'owner') {
       setVerificado(true)
     } else {
       router.replace('/login')

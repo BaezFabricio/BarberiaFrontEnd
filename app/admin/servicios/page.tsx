@@ -65,6 +65,9 @@ export default function ServiciosPage() {
     if (!form.nombre_servicio || !form.precio || !form.duracion_minutos) {
       return setError('Nombre, precio y duración son obligatorios.')
     }
+    if (Number(form.duracion_minutos) < 30) {
+      return setError('La duración mínima es 30 minutos.')
+    }
     setLoading(true)
     try {
       const payload = { ...form, precio: Number(form.precio), duracion_minutos: Number(form.duracion_minutos) }
@@ -237,7 +240,7 @@ export default function ServiciosPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="duracion">Duración (min)</Label>
-                <Input id="duracion" type="number" min="1" placeholder="40" value={form.duracion_minutos}
+                <Input id="duracion" type="number" min="30" placeholder="40" value={form.duracion_minutos}
                   onChange={e => setForm(p => ({ ...p, duracion_minutos: e.target.value }))} required />
               </div>
             </div>

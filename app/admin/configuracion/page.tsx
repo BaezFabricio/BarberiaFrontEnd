@@ -7,11 +7,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save } from 'lucide-react'
+import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save, Bell } from 'lucide-react'
 import { api } from '@/lib/api'
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 
-type Barberia = { nombre_negocio: string; color_primario?: string }
+type Barberia = {
+  nombre_negocio: string; color_primario?: string
+  telefono?: string; direccion?: string; correo_negocio?: string
+  horario_lv_desde?: string; horario_lv_hasta?: string; horario_sab_desde?: string; horario_sab_hasta?: string; domingo_cerrado?: boolean
+  duracion_turno?: number; tiempo_cancelacion?: number; tiempo_confirmacion?: number; reservas_online?: boolean; orden_llegada?: boolean; dias_inactividad?: number
+  instagram?: string; facebook?: string; whatsapp_negocio?: string
+  gmail_remitente?: string; whatsapp_barbero?: string; callmebot_apikey?: string
+}
 
 const COLORES_PRESET = [
   { label: 'Dorado',  hex: '#d4a843' },
@@ -44,27 +51,112 @@ export default function ConfiguracionPage() {
   const [color, setColor] = useState('#d4a843')
   const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '' })
   const [horarios, setHorarios] = useState({ lv_desde: '09:00', lv_hasta: '19:00', sab_desde: '09:00', sab_hasta: '15:00', domingo_cerrado: true })
-  const [reservas, setReservas] = useState({ duracion: '40', cancelacion: '60', online: true, orden_llegada: true, inactividad: '60' })
+  const [reservas, setReservas] = useState({ duracion: '40', cancelacion: '60', confirmacion: '60', online: true, orden_llegada: true, inactividad: '60' })
   const [redes, setRedes] = useState({ instagram: '', facebook: '', whatsapp: '' })
+  const [notif, setNotif] = useState({ gmail_remitente: '', gmail_password: '', whatsapp_barbero: '', callmebot_apikey: '' })
   const [guardando, setGuardando] = useState(false)
   const [exito, setExito] = useState(false)
+  const [errorHorario, setErrorHorario] = useState('')
+  const [probandoEmail, setProbandoEmail] = useState(false)
+  const [probandoWA, setProbandoWA] = useState(false)
+  const [resultadoPrueba, setResultadoPrueba] = useState<{ tipo: 'email' | 'wa'; ok: boolean; msg: string } | null>(null)
+
+  const probarEmail = async () => {
+    setProbandoEmail(true); setResultadoPrueba(null)
+    try {
+      const r = await api.post<{ mensaje: string }>('/notificaciones/prueba-email', {})
+      setResultadoPrueba({ tipo: 'email', ok: true, msg: r.mensaje })
+    } catch (e: unknown) { setResultadoPrueba({ tipo: 'email', ok: false, msg: e instanceof Error ? e.message : 'Error' }) }
+    finally { setProbandoEmail(false) }
+  }
+
+  const probarWhatsApp = async () => {
+    setProbandoWA(true); setResultadoPrueba(null)
+    try {
+      const r = await api.post<{ mensaje: string }>('/notificaciones/prueba-whatsapp', {})
+      setResultadoPrueba({ tipo: 'wa', ok: true, msg: r.mensaje })
+    } catch (e: unknown) { setResultadoPrueba({ tipo: 'wa', ok: false, msg: e instanceof Error ? e.message : 'Error' }) }
+    finally { setProbandoWA(false) }
+  }
+  const [advertenciaHorario, setAdvertenciaHorario] = useState('')
+
+  type HorarioBarbero = { dia_semana: number; hora_apertura: string; hora_cierre: string; barbero_nombre?: string }
+  type BarberoConHorario = { idusuario: number; persona: { nombre_completo: string }; horarios: HorarioBarbero[] }
 
   useEffect(() => {
     api.get<Barberia>('/mi-barberia').then(d => {
-      setNegocio(p => ({ ...p, nombre: d.nombre_negocio }))
+      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '' })
       if (d.color_primario) { setColor(d.color_primario); aplicarColor(d.color_primario) }
+      setHorarios({ lv_desde: d.horario_lv_desde ?? '09:00', lv_hasta: d.horario_lv_hasta ?? '19:00', sab_desde: d.horario_sab_desde ?? '09:00', sab_hasta: d.horario_sab_hasta ?? '15:00', domingo_cerrado: d.domingo_cerrado ?? true })
+      setReservas({ duracion: String(d.duracion_turno ?? 40), cancelacion: String(d.tiempo_cancelacion ?? 60), confirmacion: String(d.tiempo_confirmacion ?? 60), online: d.reservas_online ?? true, orden_llegada: d.orden_llegada ?? true, inactividad: String(d.dias_inactividad ?? 60) })
+      setRedes({ instagram: d.instagram ?? '', facebook: d.facebook ?? '', whatsapp: d.whatsapp_negocio ?? '' })
+      setNotif(p => ({ ...p, gmail_remitente: d.gmail_remitente ?? '', whatsapp_barbero: d.whatsapp_barbero ?? '', callmebot_apikey: d.callmebot_apikey ?? '' }))
     }).catch(() => {})
   }, [])
 
   const handleColorChange = (hex: string) => { setColor(hex); aplicarColor(hex, false) }
 
+  const validarHorarios = async () => {
+    setErrorHorario(''); setAdvertenciaHorario('')
+    try {
+      const barberos = await api.get<BarberoConHorario[]>('/barberos')
+      const advertencias: string[] = []
+      const toMin = (h: string) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
+      // Días L-V = 1-5, Sab = 6
+      for (const b of barberos) {
+        const horarios = await api.get<HorarioBarbero[]>(`/barberos/${b.idusuario}/horarios`)
+        for (const h of horarios) {
+          const esSab = h.dia_semana === 6
+          const esDom = h.dia_semana === 7
+          if (esDom && horarios.domingo_cerrado === true) {
+            advertencias.push(`${b.persona.nombre_completo} tiene horario el domingo pero el local está cerrado ese día`)
+            continue
+          }
+          const negDesde = toMin(esSab ? horarios.sab_desde : horarios.lv_desde)
+          const negHasta = toMin(esSab ? horarios.sab_hasta : horarios.lv_hasta)
+          const barbDesde = toMin(h.hora_apertura.slice(0, 5))
+          const barbHasta = toMin(h.hora_cierre.slice(0, 5))
+          if (barbDesde < negDesde || barbHasta > negHasta) {
+            advertencias.push(`${b.persona.nombre_completo} — día ${h.dia_semana}: ${h.hora_apertura.slice(0,5)}–${h.hora_cierre.slice(0,5)} está fuera del horario del local`)
+          }
+        }
+      }
+      if (advertencias.length) setAdvertenciaHorario(advertencias.join('\n'))
+    } catch { /* no bloquear si falla */ }
+  }
+
   const handleGuardar = async () => {
     setGuardando(true); setExito(false)
     try {
-      await api.put('/mi-barberia', { nombre_negocio: negocio.nombre, color_primario: color })
+      await api.put('/mi-barberia', {
+        nombre_negocio:      negocio.nombre,
+        telefono:            negocio.telefono,
+        direccion:           negocio.direccion,
+        correo_negocio:      negocio.correo,
+        color_primario:      color,
+        horario_lv_desde:    horarios.lv_desde,
+        horario_lv_hasta:    horarios.lv_hasta,
+        horario_sab_desde:   horarios.sab_desde,
+        horario_sab_hasta:   horarios.sab_hasta,
+        domingo_cerrado:     horarios.domingo_cerrado,
+        duracion_turno:      Number(reservas.duracion),
+        tiempo_cancelacion:  Number(reservas.cancelacion),
+        tiempo_confirmacion: Number(reservas.confirmacion),
+        reservas_online:     reservas.online,
+        orden_llegada:       reservas.orden_llegada,
+        dias_inactividad:    Number(reservas.inactividad),
+        instagram:           redes.instagram,
+        facebook:            redes.facebook,
+        whatsapp_negocio:    redes.whatsapp,
+        gmail_remitente:     notif.gmail_remitente,
+        gmail_password:      notif.gmail_password || undefined,
+        whatsapp_barbero:    notif.whatsapp_barbero,
+        callmebot_apikey:    notif.callmebot_apikey,
+      })
       aplicarColor(color, true)
       setExito(true)
       setTimeout(() => setExito(false), 3000)
+      await validarHorarios()
     } finally { setGuardando(false) }
   }
 
@@ -148,6 +240,15 @@ export default function ConfiguracionPage() {
             </div>
             <Switch checked={horarios.domingo_cerrado} onCheckedChange={v => setHorarios(p => ({ ...p, domingo_cerrado: v }))} />
           </div>
+          {advertenciaHorario && (
+            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 space-y-1">
+              <p className="text-xs font-semibold text-yellow-500">⚠ Conflictos con horarios de barberos</p>
+              {advertenciaHorario.split('\n').map((msg, i) => (
+                <p key={i} className="text-xs text-yellow-400">{msg}</p>
+              ))}
+              <p className="text-xs text-muted-foreground mt-1">Revisá los horarios individuales en el módulo de Barberos.</p>
+            </div>
+          )}
         </div>
 
         {/* Reservas */}
@@ -159,7 +260,6 @@ export default function ConfiguracionPage() {
               <Select value={reservas.duracion} onValueChange={v => setReservas(p => ({ ...p, duracion: v }))}>
                 <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="15">15 minutos</SelectItem>
                   <SelectItem value="30">30 minutos</SelectItem>
                   <SelectItem value="40">40 minutos</SelectItem>
                   <SelectItem value="60">1 hora</SelectItem>
@@ -168,7 +268,7 @@ export default function ConfiguracionPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Tiempo minimo para cancelar</Label>
+              <Label className="text-xs text-muted-foreground">Tiempo mínimo para cancelar</Label>
               <Select value={reservas.cancelacion} onValueChange={v => setReservas(p => ({ ...p, cancelacion: v }))}>
                 <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -177,6 +277,18 @@ export default function ConfiguracionPage() {
                   <SelectItem value="120">2 horas</SelectItem>
                   <SelectItem value="240">4 horas</SelectItem>
                   <SelectItem value="1440">24 horas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tiempo para confirmar reserva</Label>
+              <Select value={reservas.confirmacion} onValueChange={v => setReservas(p => ({ ...p, confirmacion: v }))}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 minutos</SelectItem>
+                  <SelectItem value="60">1 hora</SelectItem>
+                  <SelectItem value="120">2 horas</SelectItem>
+                  <SelectItem value="240">4 horas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -226,6 +338,49 @@ export default function ConfiguracionPage() {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">WhatsApp</Label>
               <Input value={redes.whatsapp} onChange={e => setRedes(p => ({ ...p, whatsapp: e.target.value }))} placeholder="+54 11 4567-8900" />
+            </div>
+          </div>
+        </div>
+
+        {/* Notificaciones - col span 2 */}
+        <div className="col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+          <SectionTitle icon={Bell} title="Notificaciones" subtitle="Configurá el email y WhatsApp para avisar a clientes y barberos" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gmail (para enviar emails)</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Correo remitente</Label>
+                <Input value={notif.gmail_remitente} onChange={e => setNotif(p => ({ ...p, gmail_remitente: e.target.value }))} placeholder="tunegocio@gmail.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Contraseña de aplicación</Label>
+                <Input type="password" value={notif.gmail_password} onChange={e => setNotif(p => ({ ...p, gmail_password: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx" />
+                <p className="text-[11px] text-muted-foreground">Generala en Google → Seguridad → Contraseñas de aplicaciones</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={probarEmail} disabled={probandoEmail} className="gap-2 text-xs">
+                {probandoEmail ? 'Enviando...' : 'Enviar email de prueba'}
+              </Button>
+              {resultadoPrueba?.tipo === 'email' && (
+                <p className={`text-xs ${resultadoPrueba.ok ? 'text-green-500' : 'text-destructive'}`}>{resultadoPrueba.msg}</p>
+              )}
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">WhatsApp (CallMeBot)</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Número WhatsApp del barbero</Label>
+                <Input value={notif.whatsapp_barbero} onChange={e => setNotif(p => ({ ...p, whatsapp_barbero: e.target.value }))} placeholder="+5491112345678" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">CallMeBot API Key</Label>
+                <Input value={notif.callmebot_apikey} onChange={e => setNotif(p => ({ ...p, callmebot_apikey: e.target.value }))} placeholder="1234567" />
+                <p className="text-[11px] text-muted-foreground">Mandá "I allow callmebot to send me messages" al +34 644 61 16 28</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={probarWhatsApp} disabled={probandoWA} className="gap-2 text-xs">
+                {probandoWA ? 'Enviando...' : 'Enviar WhatsApp de prueba'}
+              </Button>
+              {resultadoPrueba?.tipo === 'wa' && (
+                <p className={`text-xs ${resultadoPrueba.ok ? 'text-green-500' : 'text-destructive'}`}>{resultadoPrueba.msg}</p>
+              )}
             </div>
           </div>
         </div>

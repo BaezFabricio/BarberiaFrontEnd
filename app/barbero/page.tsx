@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronRight, Plus, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { ChevronRight, Plus, CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone, CreditCard, LayoutDashboard } from 'lucide-react'
 import { api } from '@/lib/api'
 
 type Turno = {
@@ -16,14 +16,22 @@ type Turno = {
   servicio: { nombre_servicio: string; precio: number; duracion_minutos: number }
   cliente?: { persona: { nombre_completo: string; telefono: string } }
 }
-type Perfil = { nombre_completo: string; rating_promedio: number; comision_porcentaje: number; foto_url?: string | null }
+type Perfil = { nombre_completo: string; rating_promedio: number; comision_porcentaje: number; puede_cobrar?: boolean; puede_vender?: boolean; foto_url?: string | null }
+type ConfigBarberia = { orden_llegada: boolean }
+type ProductoVenta = { idproducto: number; nombre_producto: string; precio_venta: number; stock_actual: number }
+type TurnoPendienteCobro = {
+  idagenda: number; fecha: string; hora_inicio: string
+  servicio: { nombre_servicio: string; precio: number }
+  cliente?: { persona: { nombre_completo: string } }
+}
 type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number }
 
 const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
   pendiente:  { label: 'Reservado',  className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   confirmado: { label: 'Confirmado', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  atendido:   { label: 'Atendido',   className: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
-  ausente:    { label: 'Ausente',    className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  atendido:   { label: 'Atendido · Falta cobrar', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  cobrado:    { label: 'Atendido · Cobrado',      className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  ausente:    { label: 'Ausente',                 className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
   cancelado:  { label: 'Cancelado',  className: 'bg-red-500/20 text-red-400 border-red-500/30' },
 }
 
@@ -42,7 +50,22 @@ export default function BarberoPage() {
   const [turnos, setTurnos] = useState<Turno[]>([])
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [servicios, setServicios] = useState<Servicio[]>([])
-  const [tab, setTab] = useState<'hoy' | 'agenda' | 'stats'>('hoy')
+  const [tab, setTab] = useState<'hoy' | 'agenda' | 'stats' | 'caja' | 'productos'>('hoy')
+  const [turnosPendientesCobro, setTurnosPendientesCobro] = useState<TurnoPendienteCobro[]>([])
+  const [modalCobro, setModalCobro] = useState(false)
+  const [turnoACobrar, setTurnoACobrar] = useState<TurnoPendienteCobro | null>(null)
+  const [montoCobro, setMontoCobro] = useState('')
+  const [metodoCobro, setMetodoCobro] = useState('efectivo')
+  const [guardandoCobro, setGuardandoCobro] = useState(false)
+  const [errorCobro, setErrorCobro] = useState('')
+
+  // Venta productos
+  const [productosVenta, setProductosVenta] = useState<ProductoVenta[]>([])
+  const [modalVenta, setModalVenta] = useState(false)
+  const [formVenta, setFormVenta] = useState({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
+  const [guardandoVenta, setGuardandoVenta] = useState(false)
+  const [errorVenta, setErrorVenta] = useState('')
+  const [ordenLlegada, setOrdenLlegada] = useState(true)
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ ...FORM_VACIO, fecha: hoyStr })
   const [guardando, setGuardando] = useState(false)
@@ -50,11 +73,17 @@ export default function BarberoPage() {
 
   useEffect(() => {
     api.get<Turno[]>(`/turnos?fecha=${hoyStr}`).then(setTurnos).catch(() => {})
-    api.get<Perfil>('/mi-perfil').then(setPerfil).catch(() => {})
+    api.get<Perfil>('/mi-perfil').then(p => {
+      setPerfil(p)
+      if (p.puede_cobrar) cargarPendientesCobro()
+      if (p.puede_vender) api.get<ProductoVenta[]>('/productos').then(setProductosVenta).catch(() => {})
+    }).catch(() => {})
     api.get<Servicio[]>('/servicios').then(setServicios).catch(() => {})
+    api.get<ConfigBarberia>('/mi-barberia').then(d => setOrdenLlegada(d.orden_llegada ?? true)).catch(() => {})
   }, [])
 
   const recargar = () => api.get<Turno[]>(`/turnos?fecha=${hoyStr}`).then(setTurnos).catch(() => {})
+  const cargarPendientesCobro = () => api.get<TurnoPendienteCobro[]>('/pagos/turnos-pendientes').then(setTurnosPendientesCobro).catch(() => {})
 
   const cambiarEstado = async (id: number, estado: string) => {
     await api.patch(`/turnos/${id}/estado`, { estado })
@@ -78,13 +107,37 @@ export default function BarberoPage() {
     } finally { setGuardando(false) }
   }
 
+  const registrarVentaBarbero = async () => {
+    setGuardandoVenta(true); setErrorVenta('')
+    try {
+      await api.post('/ventas', { idproducto: Number(formVenta.idproducto), cantidad: Number(formVenta.cantidad), metodo_pago: formVenta.metodo_pago })
+      setModalVenta(false); setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
+      api.get<ProductoVenta[]>('/productos').then(setProductosVenta).catch(() => {})
+    } catch (e: unknown) { setErrorVenta(e instanceof Error ? e.message : 'Error') }
+    finally { setGuardandoVenta(false) }
+  }
+
+  const abrirCobro = (t: TurnoPendienteCobro) => {
+    setTurnoACobrar(t); setMontoCobro(String(t.servicio.precio)); setMetodoCobro('efectivo'); setErrorCobro(''); setModalCobro(true)
+  }
+
+  const registrarCobro = async () => {
+    if (!turnoACobrar) return
+    setGuardandoCobro(true); setErrorCobro('')
+    try {
+      await api.post('/pagos', { idagenda: turnoACobrar.idagenda, monto_pago: Number(montoCobro), metodo_pago: metodoCobro })
+      setModalCobro(false); cargarPendientesCobro()
+    } catch (e: unknown) { setErrorCobro(e instanceof Error ? e.message : 'Error') }
+    finally { setGuardandoCobro(false) }
+  }
+
   const turnosOrdenados = [...turnos].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
-  const activos = turnosOrdenados.filter(t => t.estado !== 'atendido' && t.estado !== 'cancelado' && t.estado !== 'ausente')
+  const activos = turnosOrdenados.filter(t => t.estado !== 'atendido' && t.estado !== 'cobrado' && t.estado !== 'cancelado' && t.estado !== 'ausente')
   const proximo = activos[0]
 
-  const hechos = turnos.filter(t => t.estado === 'atendido').length
+  const hechos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
   const pendientes = turnos.filter(t => t.estado === 'pendiente' || t.estado === 'confirmado').length
-  const ingresos = turnos.filter(t => t.estado === 'atendido').reduce((a, t) => a + Number(t.servicio.precio), 0)
+  const ingresos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
   const fmt = (n: number) => n >= 1000 ? `$${(n/1000).toFixed(1)}k` : `$${n}`
 
   // Próximos 5 días para la pestaña Agenda
@@ -107,6 +160,14 @@ export default function BarberoPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="px-4 py-5">
+        {/* Volver al admin (solo owner) */}
+        {(() => { try { const p = JSON.parse(atob(localStorage.getItem('token')!.split('.')[1])); return p.rol === 'owner' || p.rol === 'admin' } catch { return false } })() && (
+          <a href="/admin" className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <LayoutDashboard className="size-3.5" />
+            Volver al panel de administración
+          </a>
+        )}
+
         {/* Saludo */}
         <div className="mb-5 flex items-center gap-3">
           <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-primary/10">
@@ -154,23 +215,30 @@ export default function BarberoPage() {
         )}
 
         {/* Botón registrar orden de llegada */}
-        <button
-          onClick={() => { setForm({ ...FORM_VACIO, fecha: hoyStr }); setError(''); setModal(true) }}
-          className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/20 py-3 text-sm text-muted-foreground transition-colors hover:bg-card/40"
-        >
-          <Plus className="size-4" />
-          Registrar turno por orden de llegada
-        </button>
+        {ordenLlegada && (
+          <button
+            onClick={() => { setForm({ ...FORM_VACIO, fecha: hoyStr }); setError(''); setModal(true) }}
+            className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/20 py-3 text-sm text-muted-foreground transition-colors hover:bg-card/40"
+          >
+            <Plus className="size-4" />
+            Registrar turno por orden de llegada
+          </button>
+        )}
 
         {/* Tabs */}
-        <div className="mb-4 grid grid-cols-3 rounded-xl border border-border/50 bg-card/20 p-1">
-          {(['hoy', 'agenda', 'stats'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`rounded-lg py-2 text-sm capitalize transition-colors ${tab === t ? 'bg-card font-semibold text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-              {t === 'hoy' ? 'Hoy' : t === 'agenda' ? 'Agenda' : 'Stats'}
-            </button>
-          ))}
-        </div>
+        {(() => {
+          const tabs = ['hoy', 'agenda', 'stats', ...(perfil?.puede_cobrar ? ['caja'] : []), ...(perfil?.puede_vender ? ['productos'] : [])]
+          return (
+            <div className={`mb-4 grid rounded-xl border border-border/50 bg-card/20 p-1`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+              {tabs.map(t => (
+                <button key={t} onClick={() => setTab(t as typeof tab)}
+                  className={`rounded-lg py-2 text-xs sm:text-sm transition-colors ${tab === t ? 'bg-card font-semibold text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {t === 'hoy' ? 'Hoy' : t === 'agenda' ? 'Agenda' : t === 'stats' ? 'Stats' : t === 'caja' ? '💰 Caja' : '📦 Productos'}
+                </button>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Tab: Hoy */}
         {tab === 'hoy' && (
@@ -179,7 +247,7 @@ export default function BarberoPage() {
               <p className="py-8 text-center text-sm text-muted-foreground">No hay turnos para hoy</p>
             ) : turnosOrdenados.map(t => {
               const est = ESTADO_BADGE[t.estado] ?? ESTADO_BADGE.pendiente
-              const finalizado = t.estado === 'atendido' || t.estado === 'ausente' || t.estado === 'cancelado'
+              const finalizado = t.estado === 'atendido' || t.estado === 'cobrado' || t.estado === 'ausente' || t.estado === 'cancelado'
               return (
                 <div key={t.idagenda} className={`flex items-center gap-3 rounded-xl border border-border/30 bg-card/20 px-4 py-3 ${finalizado ? 'opacity-50' : ''}`}>
                   <div className="w-12 shrink-0">
@@ -234,7 +302,130 @@ export default function BarberoPage() {
         {tab === 'stats' && (
           <StatsTab turnos={turnos} perfil={perfil} />
         )}
+
+        {/* Tab: Caja */}
+        {tab === 'caja' && (
+          <div className="space-y-2">
+            {turnosPendientesCobro.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No hay turnos pendientes de cobro</p>
+            ) : turnosPendientesCobro.map(t => (
+              <div key={t.idagenda} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                  <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}</p>
+                </div>
+                <span className="shrink-0 text-sm font-bold text-yellow-500">${Number(t.servicio.precio).toLocaleString('es-AR')}</span>
+                <Button size="sm" className="shrink-0 h-8 gap-1" onClick={() => abrirCobro(t)}>
+                  <DollarSign className="size-3" />Cobrar
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+        {/* Tab: Productos */}
+        {tab === 'productos' && (
+          <div className="space-y-3">
+            <button onClick={() => { setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setErrorVenta(''); setModalVenta(true) }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/20 py-3 text-sm text-muted-foreground hover:bg-card/40 transition-colors">
+              <Plus className="size-4" />Registrar venta de producto
+            </button>
+            <div className="space-y-2">
+              {productosVenta.map(p => (
+                <div key={p.idproducto} className="flex items-center justify-between rounded-xl border border-border/30 bg-card/20 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">{p.nombre_producto}</p>
+                    <p className="text-xs text-muted-foreground">Stock: {p.stock_actual}</p>
+                  </div>
+                  <span className="font-bold text-primary">${Number(p.precio_venta).toLocaleString('es-AR')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* Modal venta producto */}
+      <Dialog open={modalVenta} onOpenChange={setModalVenta}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Venta de producto</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Producto</Label>
+              <Select value={formVenta.idproducto} onValueChange={v => setFormVenta(p => ({ ...p, idproducto: v }))}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
+                <SelectContent>
+                  {productosVenta.filter(p => p.stock_actual > 0).map(p => (
+                    <SelectItem key={p.idproducto} value={String(p.idproducto)}>
+                      {p.nombre_producto} — ${Number(p.precio_venta).toLocaleString('es-AR')} (stock: {p.stock_actual})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cantidad</Label>
+              <Input type="number" min="1" value={formVenta.cantidad} onChange={e => setFormVenta(p => ({ ...p, cantidad: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Método de pago</Label>
+              <Select value={formVenta.metodo_pago} onValueChange={v => setFormVenta(p => ({ ...p, metodo_pago: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {formVenta.idproducto && (
+              <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 flex justify-between">
+                <span className="text-sm">Total</span>
+                <span className="font-bold text-primary">${((productosVenta.find(p => p.idproducto === Number(formVenta.idproducto))?.precio_venta ?? 0) * Number(formVenta.cantidad)).toLocaleString('es-AR')}</span>
+              </div>
+            )}
+            {errorVenta && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorVenta}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalVenta(false)}>Cancelar</Button>
+            <Button onClick={registrarVentaBarbero} disabled={guardandoVenta || !formVenta.idproducto}>{guardandoVenta ? 'Guardando...' : 'Confirmar venta'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal cobro */}
+      <Dialog open={modalCobro} onOpenChange={setModalCobro}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar cobro</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">{turnoACobrar?.cliente?.persona?.nombre_completo ?? 'Sin nombre'} · {turnoACobrar?.servicio?.nombre_servicio ?? ''}</p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Monto</Label>
+              <Input type="number" value={montoCobro} onChange={e => setMontoCobro(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Método de pago</Label>
+              <Select value={metodoCobro} onValueChange={setMetodoCobro}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {errorCobro && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorCobro}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalCobro(false)}>Cancelar</Button>
+            <Button onClick={registrarCobro} disabled={guardandoCobro || !montoCobro}>
+              {guardandoCobro ? 'Guardando...' : 'Confirmar cobro'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal nuevo turno */}
       <Dialog open={modal} onOpenChange={setModal}>
@@ -324,13 +515,13 @@ function AgendaDia({ fecha, label }: { fecha: string; label: string }) {
 
 // ── Subcomponente: Stats ──────────────────────────────────────────────────────
 function StatsTab({ turnos, perfil }: { turnos: Turno[]; perfil: Perfil | null }) {
-  const atendidos = turnos.filter(t => t.estado === 'atendido').length
-  const ingresos = turnos.filter(t => t.estado === 'atendido').reduce((a, t) => a + Number(t.servicio.precio), 0)
+  const atendidos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
+  const ingresos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
   const ausentes = turnos.filter(t => t.estado === 'ausente').length
   const fmt = (n: number) => n >= 1000 ? `$${(n/1000).toFixed(1)}k` : `$${n}`
 
   const cuentaServ: Record<string, number> = {}
-  turnos.filter(t => t.estado === 'atendido').forEach(t => {
+  turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').forEach(t => {
     cuentaServ[t.servicio.nombre_servicio] = (cuentaServ[t.servicio.nombre_servicio] ?? 0) + 1
   })
   const maxServ = Math.max(...Object.values(cuentaServ), 1)

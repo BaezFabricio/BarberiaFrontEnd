@@ -315,7 +315,7 @@ export default function BarberDetailPage({ params }: { params: Promise<{ id: str
                     <p>No hay turnos programados para hoy</p>
                   </div>
                 ) : (
-                  <Table>
+                  <div className="overflow-x-auto"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Hora</TableHead>
@@ -341,7 +341,7 @@ export default function BarberDetailPage({ params }: { params: Promise<{ id: str
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
+                  </Table></div>
                 )}
               </CardContent>
             </Card>
@@ -401,7 +401,7 @@ export default function BarberDetailPage({ params }: { params: Promise<{ id: str
                     <p>No hay turnos en el historial</p>
                   </div>
                 ) : (
-                  <Table>
+                  <div className="overflow-x-auto"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Fecha</TableHead>
@@ -424,7 +424,7 @@ export default function BarberDetailPage({ params }: { params: Promise<{ id: str
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
+                  </Table></div>
                 )}
               </CardContent>
             </Card>

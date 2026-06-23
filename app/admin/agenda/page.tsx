@@ -26,7 +26,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, UserCheck, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 
@@ -37,7 +38,7 @@ type Turno = {
   fecha: string
   hora_inicio: string
   hora_fin: string
-  estado: 'pendiente' | 'confirmado' | 'finalizado' | 'cancelado'
+  estado: 'pendiente' | 'confirmado' | 'atendido' | 'cobrado' | 'ausente' | 'cancelado' | 'archivado'
   servicio: { nombre_servicio: string; precio: number; duracion_minutos: number }
   cliente?: { persona: { nombre_completo: string } }
   barbero: { idusuario: number; persona: { nombre_completo: string } }
@@ -47,10 +48,13 @@ type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos:
 type Barbero = { idusuario: number; persona: { nombre_completo: string } }
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  pendiente:  { label: 'Pendiente',  color: 'text-yellow-500', bgColor: 'bg-yellow-400/10 border-yellow-400/20' },
-  confirmado: { label: 'Confirmado', color: 'text-primary',    bgColor: 'bg-primary/10 border-primary/20' },
-  finalizado: { label: 'Finalizado', color: 'text-muted-foreground', bgColor: 'bg-muted border-muted' },
-  cancelado:  { label: 'Cancelado',  color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/20' },
+  pendiente:  { label: 'Pendiente',  color: 'text-yellow-500',        bgColor: 'bg-yellow-400/10 border-yellow-400/20' },
+  confirmado: { label: 'Confirmado', color: 'text-primary',           bgColor: 'bg-primary/10 border-primary/20' },
+  atendido:   { label: 'Atendido · Falta cobrar', color: 'text-yellow-500',  bgColor: 'bg-yellow-400/10 border-yellow-400/20' },
+  cobrado:    { label: 'Atendido · Cobrado',      color: 'text-green-500',   bgColor: 'bg-green-500/10 border-green-500/20' },
+  ausente:    { label: 'Ausente',                 color: 'text-orange-500',  bgColor: 'bg-orange-500/10 border-orange-500/20' },
+  cancelado:  { label: 'Cancelado',  color: 'text-destructive',       bgColor: 'bg-destructive/10 border-destructive/20' },
+  archivado:  { label: 'Archivado',  color: 'text-muted-foreground',  bgColor: 'bg-muted border-muted' },
 }
 
 const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
@@ -77,7 +81,7 @@ export default function AgendaPage() {
 
   // Formulario nuevo turno
   const [nuevoTurno, setNuevoTurno] = useState({
-    nombre_cliente: '', telefono_cliente: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '',
+    nombre_cliente: '', telefono_cliente: '', correo_electronico: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '',
   })
 
   const cargarTurnos = useCallback(async () => {
@@ -139,6 +143,7 @@ export default function AgendaPage() {
       await api.post('/turnos', {
         nombre_cliente: nuevoTurno.nombre_cliente || undefined,
         telefono_cliente: nuevoTurno.telefono_cliente || undefined,
+        correo_electronico: nuevoTurno.correo_electronico || undefined,
         idusuario_barbero: Number(nuevoTurno.idusuario_barbero),
         idservicio: Number(nuevoTurno.idservicio),
         fecha: nuevoTurno.fecha,
@@ -146,7 +151,14 @@ export default function AgendaPage() {
         hora_fin: calcularHoraFin(nuevoTurno.hora_inicio, servicio.duracion_minutos),
       })
       setIsCreateDialogOpen(false)
-      setNuevoTurno({ nombre_cliente: '', telefono_cliente: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '' })
+      setNuevoTurno({ nombre_cliente: '', telefono_cliente: '', correo_electronico: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '' })
+      cargarTurnos()
+    } catch (err) { console.error(err) }
+  }
+
+  const cambiarEstado = async (idagenda: number, estado: string) => {
+    try {
+      await api.patch(`/turnos/${idagenda}/estado`, { estado })
       cargarTurnos()
     } catch (err) { console.error(err) }
   }
@@ -184,6 +196,12 @@ export default function AgendaPage() {
                   <Input placeholder="+54 11 1234-5678"
                     value={nuevoTurno.telefono_cliente}
                     onChange={e => setNuevoTurno(p => ({ ...p, telefono_cliente: e.target.value }))} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Email del cliente (opcional — para enviar confirmación)</Label>
+                  <Input type="email" placeholder="cliente@email.com"
+                    value={nuevoTurno.correo_electronico}
+                    onChange={e => setNuevoTurno(p => ({ ...p, correo_electronico: e.target.value }))} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Servicio</Label>
@@ -308,7 +326,7 @@ export default function AgendaPage() {
                               {aptsHora.map(t => {
                                 const status = statusConfig[t.estado] ?? statusConfig.pendiente
                                 return (
-                                  <div key={t.idagenda} className={cn('rounded-lg border p-3 transition-colors hover:bg-muted/50', status.bgColor)}>
+                                  <div key={t.idagenda} className={cn('rounded-lg border p-3', status.bgColor)}>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-3">
                                         <Avatar className="size-8">
@@ -319,11 +337,38 @@ export default function AgendaPage() {
                                         <div>
                                           <p className="font-medium text-sm">{t.cliente?.persona.nombre_completo ?? 'Sin cliente'}</p>
                                           <p className="text-xs text-muted-foreground">
-                                            {t.servicio.nombre_servicio} con {t.barbero?.persona?.nombre_completo ?? '—'}
+                                            {t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}–{t.hora_fin.slice(0,5)} · {t.barbero?.persona?.nombre_completo ?? '—'}
                                           </p>
                                         </div>
                                       </div>
-                                      <Badge variant="outline" className={status.color}>{status.label}</Badge>
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className={status.color}>{status.label}</Badge>
+                                        {!['archivado', 'cancelado', 'cobrado'].includes(t.estado) && (
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="size-7">
+                                                <MoreHorizontal className="size-4" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              {t.estado !== 'confirmado' && t.estado !== 'atendido' && (
+                                                <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
+                                                  <CheckCircle className="mr-2 size-4 text-primary" />Confirmar
+                                                </DropdownMenuItem>
+                                              )}
+                                              {t.estado !== 'atendido' && (
+                                                <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                                                  <UserCheck className="mr-2 size-4 text-green-500" />Marcar atendido
+                                                </DropdownMenuItem>
+                                              )}
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'cancelado')} className="text-destructive">
+                                                <XCircle className="mr-2 size-4" />Cancelar turno
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 )

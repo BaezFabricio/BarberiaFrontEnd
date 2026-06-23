@@ -154,7 +154,7 @@ export default function ProductosPage() {
         {/* Tabla */}
         <Card>
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Producto</TableHead>
@@ -221,7 +221,7 @@ export default function ProductosPage() {
                   )
                 })}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       </div>

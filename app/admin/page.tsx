@@ -8,6 +8,7 @@ import { TodayAppointments } from '@/components/admin/today-appointments'
 import { BarberPerformance } from '@/components/admin/barber-performance'
 import { LowStockAlert } from '@/components/admin/low-stock-alert'
 import { Plus } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/api'
 
 type Turno = {
@@ -38,33 +39,67 @@ type Producto = {
 }
 
 type Cliente = { idcliente: number }
+type Pago = { monto_pago: number }
+type Inactivos = { dias_config: number; inactivos: { idcliente: number }[] }
+type RankingBarbero = { nombre: string; turnos: number; ingresos: number }
+type Reportes = { ranking_barberos: RankingBarbero[] }
+
+type Periodo = 'hoy' | 'semana' | 'mes'
+
+function getRango(periodo: Periodo): { desde: string; hasta: string } {
+  const hoy = new Date()
+  const hasta = hoy.toISOString().split('T')[0]
+  if (periodo === 'hoy') return { desde: hasta, hasta }
+  if (periodo === 'semana') {
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7))
+    return { desde: lunes.toISOString().split('T')[0], hasta }
+  }
+  return { desde: hasta.slice(0, 8) + '01', hasta }
+}
 
 export default function AdminDashboard() {
   const hoy = new Date().toISOString().split('T')[0]
+  const [periodo, setPeriodo] = useState<Periodo>('mes')
 
   const [turnosHoy, setTurnosHoy] = useState<Turno[]>([])
   const [barberos, setBarberos] = useState<Barbero[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
   const [totalClientes, setTotalClientes] = useState(0)
+  const [inactivosCount, setInactivosCount] = useState(0)
+  const [pagosRango, setPagosRango] = useState<Pago[]>([])
+  const [rankingRango, setRankingRango] = useState<RankingBarbero[]>([])
 
+  // Carga estática (no cambia con el período)
   useEffect(() => {
     Promise.allSettled([
       api.get<Turno[]>(`/turnos?fecha=${hoy}`),
       api.get<Barbero[]>('/barberos'),
       api.get<Producto[]>('/productos'),
       api.get<Cliente[]>('/clientes'),
-    ]).then(([turnos, barbs, prods, clts]) => {
+      api.get<Inactivos>('/clientes/inactivos'),
+    ]).then(([turnos, barbs, prods, clts, inactivos]) => {
       if (turnos.status === 'fulfilled') setTurnosHoy(turnos.value)
       if (barbs.status === 'fulfilled') setBarberos(barbs.value)
       if (prods.status === 'fulfilled') setProductos(prods.value)
       if (clts.status === 'fulfilled') setTotalClientes(clts.value.length)
+      if (inactivos.status === 'fulfilled') setInactivosCount(inactivos.value.inactivos.length)
     })
   }, [hoy])
 
-  // Ingresos del día: suma de turnos finalizados hoy
-  const ingresosDiarios = turnosHoy
-    .filter(t => t.estado === 'finalizado')
-    .reduce((acc, t) => acc + Number(t.servicio.precio), 0)
+  // Carga dinámica según período seleccionado
+  useEffect(() => {
+    const { desde, hasta } = getRango(periodo)
+    Promise.allSettled([
+      api.get<Pago[]>(`/pagos?desde=${desde}&hasta=${hasta}`),
+      api.get<Reportes>(`/reportes?desde=${desde}&hasta=${hasta}`),
+    ]).then(([pagos, reportes]) => {
+      if (pagos.status === 'fulfilled') setPagosRango(pagos.value)
+      if (reportes.status === 'fulfilled') setRankingRango(reportes.value.ranking_barberos)
+    })
+  }, [periodo])
+
+  const ingresosDiarios = pagosRango.reduce((acc, p) => acc + Number(p.monto_pago), 0)
 
   const productosStockBajo = productos.filter(p => p.stock_actual <= p.stock_minimo).length
 
@@ -85,22 +120,25 @@ export default function AdminDashboard() {
   }))
 
   // Adaptar barberos al formato que espera BarberPerformance
-  const barberosAdaptados = barberos.map(b => ({
-    id: String(b.idusuario),
-    nombre: b.persona.nombre_completo,
-    email: '',
-    telefono: '',
-    activo: true,
-    comision: Number(b.comision_porcentaje),
-    especialidades: [],
-    estadisticas: {
-      turnosMes: 0,
-      ingresosMes: 0,
-      calificacionPromedio: Number(b.rating_promedio),
-      clientesAtendidos: 0,
-    },
-    fechaIngreso: '',
-  }))
+  const barberosAdaptados = barberos.map(b => {
+    const stats = rankingRango.find(r => r.nombre === b.persona.nombre_completo)
+    return {
+      id: String(b.idusuario),
+      nombre: b.persona.nombre_completo,
+      email: '',
+      telefono: '',
+      activo: true,
+      comision: Number(b.comision_porcentaje),
+      especialidades: [],
+      estadisticas: {
+        turnosMes: stats?.turnos ?? 0,
+        ingresosMes: stats?.ingresos ?? 0,
+        calificacionPromedio: Number(b.rating_promedio),
+        clientesAtendidos: 0,
+      },
+      fechaIngreso: '',
+    }
+  })
 
   // Adaptar productos al formato que espera LowStockAlert
   const productosAdaptados = productos.map(p => ({
@@ -120,17 +158,31 @@ export default function AdminDashboard() {
         title="Dashboard"
         description="Resumen general del negocio"
         actions={
-          <Button className="gap-2" onClick={() => window.location.href = '/admin/agenda'}>
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">Nuevo Turno</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select value={periodo} onValueChange={v => setPeriodo(v as Periodo)}>
+              <SelectTrigger className="h-9 w-36 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hoy">Hoy</SelectItem>
+                <SelectItem value="semana">Esta semana</SelectItem>
+                <SelectItem value="mes">Este mes</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button className="gap-2" onClick={() => window.location.href = '/admin/agenda'}>
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">Nuevo Turno</span>
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 space-y-6 p-4 md:p-6">
         <DashboardMetrics
           ingresosDiarios={ingresosDiarios}
+          periodo={periodo}
           turnosHoy={turnosHoy.length}
+          turnosConfirmados={turnosHoy.filter(t => t.estado === 'confirmado').length}
+          turnosPendientes={turnosHoy.filter(t => t.estado === 'pendiente').length}
           clientesActivos={totalClientes}
+          clientesInactivos={inactivosCount}
           productosStockBajo={productosStockBajo}
         />
         <div className="grid gap-6 lg:grid-cols-3">

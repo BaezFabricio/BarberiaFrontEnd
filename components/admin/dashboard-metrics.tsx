@@ -86,50 +86,46 @@ export function MetricCard({
 
 interface DashboardMetricsProps {
   ingresosDiarios: number
+  periodo: 'hoy' | 'semana' | 'mes'
   turnosHoy: number
+  turnosConfirmados: number
+  turnosPendientes: number
   clientesActivos: number
+  clientesInactivos: number
   productosStockBajo: number
 }
 
+const PERIODO_LABEL = { hoy: 'hoy', semana: 'esta semana', mes: 'este mes' }
+
 export function DashboardMetrics({
-  ingresosDiarios,
-  turnosHoy,
-  clientesActivos,
-  productosStockBajo
+  ingresosDiarios, periodo, turnosHoy, turnosConfirmados, turnosPendientes, clientesActivos, clientesInactivos, productosStockBajo
 }: DashboardMetricsProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
+  const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n)
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title="Ingresos del Dia"
-        value={formatCurrency(ingresosDiarios)}
-        description="vs. ayer"
+        title="Ingresos"
+        value={fmt(ingresosDiarios)}
+        description={`cobrado ${PERIODO_LABEL[periodo]}`}
         icon={DollarSign}
-        trend={{ value: 12.5, isPositive: true }}
         variant="success"
       />
       <MetricCard
-        title="Turnos Hoy"
+        title="Turnos hoy"
         value={turnosHoy}
-        description="3 confirmados, 4 pendientes"
+        description={`${turnosConfirmados} confirmados · ${turnosPendientes} pendientes`}
         icon={Calendar}
       />
       <MetricCard
-        title="Clientes Activos"
+        title="Clientes totales"
         value={clientesActivos}
-        description="este mes"
+        description={clientesInactivos > 0 ? `${clientesInactivos} inactivos` : 'todos activos'}
         icon={Users}
-        trend={{ value: 8.2, isPositive: true }}
+        variant={clientesInactivos > 0 ? 'warning' : 'default'}
       />
       <MetricCard
-        title="Stock Bajo"
+        title="Stock bajo"
         value={productosStockBajo}
         description="productos a reponer"
         icon={Package}

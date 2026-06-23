@@ -9,7 +9,6 @@ import {
   Scissors,
   Calendar,
   Package,
-  DollarSign,
   Receipt,
   BarChart3,
   Bell,
@@ -18,7 +17,8 @@ import {
   LogOut,
   User,
   ShoppingBag,
-  CreditCard
+  CreditCard,
+  Store
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -44,9 +44,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { notificaciones } from '@/lib/mock-data'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { authApi, api } from '@/lib/api'
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
@@ -142,23 +141,53 @@ function Logo() {
 }
 
 function NotificationBadge() {
-  const unreadCount = notificaciones.filter(n => !n.leida).length
-  if (unreadCount === 0) return null
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    api.get<{ leido: boolean }[]>('/notificaciones')
+      .then(data => setCount(data.filter(n => !n.leido).length))
+      .catch(() => {})
+  }, [])
+  if (count === 0) return null
   return (
     <Badge variant="destructive" className="ml-auto size-5 justify-center rounded-full p-0 text-xs">
-      {unreadCount}
+      {count}
     </Badge>
   )
+}
+
+type PerfilAdmin = { nombre_completo: string; correo_electronico: string; foto_url?: string | null }
+
+function getRol(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return null
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.rol ?? null
+  } catch { return null }
 }
 
 function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [perfil, setPerfil] = useState<PerfilAdmin | null>(null)
+  const [rol, setRol] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRol(getRol())
+    api.get<PerfilAdmin>('/mi-perfil')
+      .then(d => setPerfil(d))
+      .catch(() => {})
+  }, [])
 
   const handleLogout = () => {
     authApi.logout()
     router.push('/login')
   }
+
+  const initiales = perfil?.nombre_completo
+    ? perfil.nombre_completo.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'AD'
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -201,6 +230,27 @@ function AdminSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        {(rol === 'owner' || rol === 'admin') && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Mi Panel
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Panel de barbero"
+                    className="transition-colors"
+                  >
+                    <Link href="/barbero">
+                      <Store className="size-4" />
+                      <span>Panel de barbero</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
@@ -210,13 +260,14 @@ function AdminSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full">
                   <Avatar className="size-6">
+                    {perfil?.foto_url && <AvatarImage src={perfil.foto_url} alt={perfil.nombre_completo} className="object-cover" />}
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      AD
+                      {initiales}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-1 flex-col items-start text-left">
-                    <span className="text-sm font-medium">Administrador</span>
-                    <span className="text-xs text-muted-foreground">admin@barberstudio.com</span>
+                    <span className="text-sm font-medium">{perfil?.nombre_completo ?? 'Administrador'}</span>
+                    <span className="text-xs text-muted-foreground">{perfil?.correo_electronico ?? ''}</span>
                   </div>
                   <ChevronDown className="size-4 text-muted-foreground" />
                 </SidebarMenuButton>
