@@ -132,18 +132,18 @@ export default function ConfiguracionPage() {
       const barberos = await api.get<BarberoConHorario[]>('/barberos')
       const advertencias: string[] = []
       const toMin = (h: string) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
-      // Días L-V = 1-5, Sab = 6
+      const horarioNegocio = horarios
       for (const b of barberos) {
         const horariosB = await api.get<HorarioBarbero[]>(`/barberos/${b.idusuario}/horarios`)
         for (const h of horariosB) {
           const esSab = h.dia_semana === 6
           const esDom = h.dia_semana === 7
-          if (esDom && horarios.domingo_cerrado === true) {
+          if (esDom && horarioNegocio.domingo_cerrado === true) {
             advertencias.push(`${b.persona.nombre_completo} tiene horario el domingo pero el local está cerrado ese día`)
             continue
           }
-          const negDesde = toMin(esSab ? horarios.sab_desde : horarios.lv_desde)
-          const negHasta = toMin(esSab ? horarios.sab_hasta : horarios.lv_hasta)
+          const negDesde = toMin(esSab ? horarioNegocio.sab_desde : horarioNegocio.lv_desde)
+          const negHasta = toMin(esSab ? horarioNegocio.sab_hasta : horarioNegocio.lv_hasta)
           const barbDesde = toMin(h.hora_apertura.slice(0, 5))
           const barbHasta = toMin(h.hora_cierre.slice(0, 5))
           if (barbDesde < negDesde || barbHasta > negHasta) {
