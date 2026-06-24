@@ -15,7 +15,7 @@ import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 function getSubdominio(): string | null {
   if (typeof window === 'undefined') return null
   const parts = window.location.hostname.split('.')
-  if (parts.length >= 3) return parts[0]
+  if (parts.length >= 3 && !parts.slice(-2).join('.').match(/vercel\.app|localhost/)) return parts[0]
   return process.env.NEXT_PUBLIC_DEV_SUBDOMINIO ?? null
 }
 
