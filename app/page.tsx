@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Calendar, Clock, MapPin, Phone, Camera, MessageCircle, Check, ChevronRight, ChevronLeft, Scissors, Star, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -59,6 +60,7 @@ const FALLBACK_IMAGES = [
 
 
 export default function ReservasPublicas() {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [logoAvailable, setLogoAvailable] = useState(true)
   const [carouselImages, setCarouselImages] = useState<{ url: string }[]>([])
@@ -86,7 +88,7 @@ export default function ReservasPublicas() {
     aplicarColorGuardado()
     const sub = getSubdominio()
     setSubdominio(sub)
-    if (!sub) { window.location.href = '/login'; return }
+    if (!sub) { router.push('/login'); return }
 
     publicFetch<BarberiaPub>(`/barberia?subdominio=${sub}`)
       .then(data => { setBarberia(data); setLoadingBarberia(false); if (data.color_primario) aplicarColor(data.color_primario, true) })
