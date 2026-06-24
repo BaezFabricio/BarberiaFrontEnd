@@ -214,10 +214,10 @@ export default function ConfiguracionPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
 
         {/* Información del negocio - col span 2 */}
-        <div className="col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+        <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
           <SectionTitle icon={Building2} title="Informacion del Negocio" subtitle="Datos generales de la barbería" />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -242,7 +242,7 @@ export default function ConfiguracionPage() {
         {/* Horarios */}
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
           <SectionTitle icon={Clock} title="Horarios de Atencion" subtitle="Configura los horarios del local" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Lunes a Viernes</Label>
               <div className="flex items-center gap-2">
@@ -293,7 +293,7 @@ export default function ConfiguracionPage() {
         {/* Reservas */}
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
           <SectionTitle icon={CalendarCog} title="Configuracion de Reservas" subtitle="Ajustes para el sistema de turnos" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Duracion por defecto del turno</Label>
               <Select value={reservas.duracion} onValueChange={v => setReservas(p => ({ ...p, duracion: v }))}>
@@ -387,50 +387,30 @@ export default function ConfiguracionPage() {
         </div>
 
         {/* Notificaciones - col span 2 */}
-        <div className="col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
-          <SectionTitle icon={Bell} title="Notificaciones" subtitle="Configurá el email y WhatsApp para avisar a clientes y barberos" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gmail (para enviar emails)</p>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Correo remitente</Label>
-                <Input value={notif.gmail_remitente} onChange={e => setNotif(p => ({ ...p, gmail_remitente: e.target.value }))} placeholder="tunegocio@gmail.com" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Contraseña de aplicación</Label>
-                <Input type="password" value={notif.gmail_password} onChange={e => setNotif(p => ({ ...p, gmail_password: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx" />
-                <p className="text-[11px] text-muted-foreground">Generala en Google → Seguridad → Contraseñas de aplicaciones</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={probarEmail} disabled={probandoEmail} className="gap-2 text-xs">
-                {probandoEmail ? 'Enviando...' : 'Enviar email de prueba'}
-              </Button>
-              {resultadoPrueba?.tipo === 'email' && (
-                <p className={`text-xs ${resultadoPrueba.ok ? 'text-green-500' : 'text-destructive'}`}>{resultadoPrueba.msg}</p>
-              )}
+        <div className="col-span-1 md:col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+          <SectionTitle icon={Bell} title="Notificaciones" subtitle="Configurá el email para avisar a clientes" />
+          <div className="space-y-3 max-w-sm">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gmail (para enviar emails)</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Correo remitente</Label>
+              <Input value={notif.gmail_remitente} onChange={e => setNotif(p => ({ ...p, gmail_remitente: e.target.value }))} placeholder="tunegocio@gmail.com" />
             </div>
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">WhatsApp (CallMeBot)</p>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Número WhatsApp del barbero</Label>
-                <Input value={notif.whatsapp_barbero} onChange={e => setNotif(p => ({ ...p, whatsapp_barbero: e.target.value }))} placeholder="+5491112345678" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">CallMeBot API Key</Label>
-                <Input value={notif.callmebot_apikey} onChange={e => setNotif(p => ({ ...p, callmebot_apikey: e.target.value }))} placeholder="1234567" />
-                <p className="text-[11px] text-muted-foreground">Mandá "I allow callmebot to send me messages" al +34 644 61 16 28</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={probarWhatsApp} disabled={probandoWA} className="gap-2 text-xs">
-                {probandoWA ? 'Enviando...' : 'Enviar WhatsApp de prueba'}
-              </Button>
-              {resultadoPrueba?.tipo === 'wa' && (
-                <p className={`text-xs ${resultadoPrueba.ok ? 'text-green-500' : 'text-destructive'}`}>{resultadoPrueba.msg}</p>
-              )}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Contraseña de aplicación</Label>
+              <Input type="password" value={notif.gmail_password} onChange={e => setNotif(p => ({ ...p, gmail_password: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx" />
+              <p className="text-[11px] text-muted-foreground">Generala en Google → Seguridad → Contraseñas de aplicaciones</p>
             </div>
+            <Button variant="outline" size="sm" onClick={probarEmail} disabled={probandoEmail} className="gap-2 text-xs">
+              {probandoEmail ? 'Enviando...' : 'Enviar email de prueba'}
+            </Button>
+            {resultadoPrueba?.tipo === 'email' && (
+              <p className={`text-xs ${resultadoPrueba.ok ? 'text-green-500' : 'text-destructive'}`}>{resultadoPrueba.msg}</p>
+            )}
           </div>
         </div>
 
         {/* Carrusel de fotos */}
-        <div className="col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+        <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
           <SectionTitle icon={ImagePlus} title="Imagen de portada" subtitle="Se muestra en la página pública de la barbería" />
           <label className={`relative group w-48 h-28 rounded-lg overflow-hidden border-2 border-dashed border-border cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center ${subiendoFoto ? 'opacity-50 pointer-events-none' : ''}`}>
             {carrusel[0] ? (
@@ -457,7 +437,7 @@ export default function ConfiguracionPage() {
         </div>
 
         {/* Color del sistema - col span 2 */}
-        <div className="col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+        <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
           <SectionTitle icon={Palette} title="Color del sistema" subtitle="Color principal en botones y acentos de toda la interfaz" />
           <div className="flex flex-wrap gap-2.5">
             {COLORES_PRESET.map(c => (

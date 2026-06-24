@@ -133,10 +133,10 @@ export default function PagosPage() {
         title="Caja"
         description="Registro de cobros por servicios"
         actions={
-          <div className="flex items-center gap-2">
-            <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36 text-sm" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-32 text-sm" />
             <span className="text-muted-foreground text-sm">—</span>
-            <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36 text-sm" />
+            <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-32 text-sm" />
             <Button size="sm" className="gap-2" onClick={() => { setErrorVenta(''); setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setModalVenta(true) }}>
               <ShoppingBag className="size-4" /><span className="hidden sm:inline">Nueva Venta</span>
             </Button>
