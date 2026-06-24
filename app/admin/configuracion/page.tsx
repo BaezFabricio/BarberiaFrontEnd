@@ -134,8 +134,8 @@ export default function ConfiguracionPage() {
       const toMin = (h: string) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
       // Días L-V = 1-5, Sab = 6
       for (const b of barberos) {
-        const horarios = await api.get<HorarioBarbero[]>(`/barberos/${b.idusuario}/horarios`)
-        for (const h of horarios) {
+        const horariosB = await api.get<HorarioBarbero[]>(`/barberos/${b.idusuario}/horarios`)
+        for (const h of horariosB) {
           const esSab = h.dia_semana === 6
           const esDom = h.dia_semana === 7
           if (esDom && horarios.domingo_cerrado === true) {
