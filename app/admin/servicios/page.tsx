@@ -165,8 +165,8 @@ export default function ServiciosPage() {
             {filtrados.map(s => (
               <Card key={s.idservicio} className={s.estado === 'inactivo' ? 'opacity-60' : ''}>
                 {s.imagen_url && (
-                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                    <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
+                  <div className="aspect-[4/3] w-full overflow-hidden rounded-t-lg">
+                    <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover object-top" />
                   </div>
                 )}
                 <CardHeader className="flex flex-row items-start justify-between pb-2">

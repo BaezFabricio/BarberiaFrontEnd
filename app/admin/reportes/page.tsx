@@ -79,10 +79,10 @@ export default function ReportesPage() {
         title="Reportes"
         description="Estadísticas del negocio"
         actions={
-          <div className="flex items-center gap-2">
-            <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36 text-sm" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-32 text-sm" />
             <span className="text-muted-foreground text-sm">—</span>
-            <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36 text-sm" />
+            <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-32 text-sm" />
           </div>
         }
       />

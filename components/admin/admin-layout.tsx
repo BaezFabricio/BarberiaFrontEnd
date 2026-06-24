@@ -303,16 +303,16 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ title, description, actions }: AdminHeaderProps) {
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
-      <SidebarTrigger className="md:hidden" />
-      <div className="flex flex-1 items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground md:text-xl">{title}</h1>
+    <header className="sticky top-0 z-10 flex min-h-14 items-center gap-2 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6 md:min-h-16">
+      <SidebarTrigger className="md:hidden shrink-0" />
+      <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-base font-semibold text-foreground md:text-xl truncate">{title}</h1>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-xs text-muted-foreground truncate md:text-sm">{description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
           {actions}
         </div>
