@@ -117,6 +117,9 @@ export default function AdminDashboard() {
     clienteId: '',
     servicioId: '',
     tipoAlta: 'web' as any,
+    tipo: 'reserva_previa' as const,
+    precioFinal: Number(t.servicio.precio),
+    fechaCreacion: t.fecha,
   }))
 
   // Adaptar barberos al formato que espera BarberPerformance
@@ -187,10 +190,10 @@ export default function AdminDashboard() {
         />
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <TodayAppointments appointments={turnosAdaptados} />
+            <TodayAppointments appointments={turnosAdaptados as any} />
           </div>
           <div className="space-y-6">
-            <BarberPerformance barbers={barberosAdaptados} />
+            <BarberPerformance barbers={barberosAdaptados as any} />
             <LowStockAlert products={productosAdaptados} />
           </div>
         </div>

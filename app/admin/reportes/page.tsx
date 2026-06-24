@@ -172,7 +172,7 @@ export default function ReportesPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="fecha" tick={{ fontSize: 11, fill: '#888' }} />
                       <YAxis tick={{ fontSize: 11, fill: '#888' }} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={40} />
-                      <Tooltip formatter={(v: number) => [fmt(v), 'Ingresos']} contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} />
+                      <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Ingresos']} contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} />
                       <Bar dataKey="total" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={60} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -193,7 +193,7 @@ export default function ReportesPage() {
                         <Pie data={data.metodos_pago.filter(m => m.total > 0)} dataKey="total" nameKey="metodo" cx="50%" cy="50%" outerRadius={65} innerRadius={35}>
                           {data.metodos_pago.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} />
+                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} />
                         <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 12, color: '#ccc' }}>{v}</span>} />
                       </PieChart>
                     </ResponsiveContainer>
@@ -278,7 +278,7 @@ export default function ReportesPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
                         <XAxis type="number" tick={{ fontSize: 11, fill: '#888' }} />
                         <YAxis type="category" dataKey="nombre" tick={{ fontSize: 11, fill: '#ccc' }} width={110} />
-                        <Tooltip formatter={(v: number, name: string) => [name === 'ingresos' ? fmt(v) : v, name === 'ingresos' ? 'Ingresos' : 'Cantidad']} contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} />
+                        <Tooltip formatter={(v, name) => [name === 'ingresos' ? fmt(Number(v ?? 0)) : v, name === 'ingresos' ? 'Ingresos' : 'Cantidad']} contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} />
                         <Bar dataKey="cantidad" fill="#60a5fa" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>

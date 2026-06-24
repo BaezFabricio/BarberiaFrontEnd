@@ -90,12 +90,7 @@ export default function ReservasPublicas() {
       .catch(() => { setCarouselImages(FALLBACK_IMAGES) })
   }, [])
 
-  // Carrusel automático
-  useEffect(() => {
-    if (carouselImages.length <= 1) return
-    const t = setInterval(() => setCurrentSlide(p => (p + 1) % carouselImages.length), 4000)
-    return () => clearInterval(t)
-  }, [carouselImages.length])
+
 
   // Cargar slots cuando cambian barbero, fecha o servicio
   useEffect(() => {
