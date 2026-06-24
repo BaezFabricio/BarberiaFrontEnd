@@ -27,26 +27,36 @@ async function publicFetch<T>(path: string): Promise<T> {
 }
 
 type Servicio = { idservicio: number; nombre_servicio: string; descripcion: string; precio: number; duracion_minutos: number; imagen_url?: string | null }
-type Barbero = { idusuario: number; rating_promedio: number; nombre_completo: string; foto_url?: string | null }
+type Barbero = { idusuario: number; rating_promedio: number; nombre_completo: string; foto_url?: string | null; especialidades?: string | null }
 type BarberiaPub = {
   nombre_negocio: string; subdominio: string; logo_url?: string | null; color_primario?: string
   telefono?: string | null; direccion?: string | null; correo_negocio?: string | null
   horario_lv_desde?: string; horario_lv_hasta?: string; horario_sab_desde?: string; horario_sab_hasta?: string; domingo_cerrado?: boolean
   instagram?: string | null; facebook?: string | null; whatsapp_negocio?: string | null
   reservas_online?: boolean
+  slogan?: string | null
+  color_portada?: string | null
+  color_nombre_1?: string | null
+  color_nombre_2?: string | null
+  texto_portada_1?: string | null
+  texto_portada_2?: string | null
+  color_header_1?: string | null
+  color_header_2?: string | null
+  maps_embed?: string | null
   servicios: Servicio[]; barberos: Barbero[]
 }
 
-const carouselImages = [
-  { url: "/images/barberia-1.jpg", alt: "Interior" },
-  { url: "/images/barberia-2.jpg", alt: "Corte" },
-  { url: "/images/barberia-3.jpg", alt: "Barba" },
+const FALLBACK_IMAGES = [
+  { url: "/images/barberia-1.jpg" },
+  { url: "/images/barberia-2.jpg" },
+  { url: "/images/barberia-3.jpg" },
 ]
+
 
 export default function ReservasPublicas() {
   const [step, setStep] = useState(1)
   const [logoAvailable, setLogoAvailable] = useState(true)
-  const [currentSlide, setCurrentSlide] = useState(0)
+  const [carouselImages, setCarouselImages] = useState<{ url: string }[]>([])
   const [subdominio, setSubdominio] = useState<string | null>(null)
   const [barberia, setBarberia] = useState<BarberiaPub | null>(null)
   const [loadingBarberia, setLoadingBarberia] = useState(true)
@@ -75,13 +85,17 @@ export default function ReservasPublicas() {
     publicFetch<BarberiaPub>(`/barberia?subdominio=${sub}`)
       .then(data => { setBarberia(data); setLoadingBarberia(false); if (data.color_primario) aplicarColor(data.color_primario, true) })
       .catch(err => { setErrorBarberia(err.message); setLoadingBarberia(false) })
+    publicFetch<{ idimagen: number; url: string }[]>(`/carrusel?subdominio=${sub}`)
+      .then(imgs => { setCarouselImages(imgs.length > 0 ? imgs : FALLBACK_IMAGES) })
+      .catch(() => { setCarouselImages(FALLBACK_IMAGES) })
   }, [])
 
   // Carrusel automático
   useEffect(() => {
+    if (carouselImages.length <= 1) return
     const t = setInterval(() => setCurrentSlide(p => (p + 1) % carouselImages.length), 4000)
     return () => clearInterval(t)
-  }, [])
+  }, [carouselImages.length])
 
   // Cargar slots cuando cambian barbero, fecha o servicio
   useEffect(() => {
@@ -212,43 +226,26 @@ export default function ReservasPublicas() {
                 <Scissors className="h-5 w-5 text-primary" />
               )}
             </div>
-            <span className="text-xl font-bold text-foreground">
-              <span>{nombreBarberia.split(' ')[0]} </span>
-              <span className="text-primary">{nombreBarberia.split(' ').slice(1).join(' ')}</span>
-            </span>
           </div>
           <ThemeToggle />
         </div>
       </header>
 
-      {/* Portada */}
-      <section className="relative w-full px-2 pt-2">
-        <div className="grid grid-cols-1 gap-2 overflow-hidden rounded-2xl md:grid-cols-3 md:gap-0 md:rounded-[1.5rem]">
-          {carouselImages.map((img, i) => (
-            <a key={i} href="#seleccion-servicio" aria-label="Ir a reservar"
-              className="group relative aspect-[16/10] overflow-hidden bg-black transition-shadow duration-300 rounded-2xl md:aspect-[4/5]">
-              <img src={img.url} alt={img.alt} className="absolute inset-0 h-full w-full object-cover brightness-100 transition-transform duration-700 ease-out group-hover:scale-105 group-hover:brightness-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/24 via-black/10 to-transparent" />
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="border-b border-border">
-        <div className="container mx-auto flex justify-center px-4 py-6">
-          <a href="#seleccion-servicio"
-            className="group w-fit rounded-2xl px-6 py-4 text-center backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5"
-            style={{
-              border: '1px solid rgba(var(--primary-rgb),0.55)',
-              background: 'linear-gradient(to bottom, rgba(var(--primary-rgb),0.12), rgba(var(--primary-rgb),0.06))',
-              boxShadow: '0 0 0 1px rgba(var(--primary-rgb),0.2), 0 16px 40px rgba(var(--primary-rgb),0.18)',
-            }}>
-            <h2 className="text-xl font-semibold tracking-tight text-primary sm:text-2xl">
-              Reserva tu turno
-            </h2>
-          </a>
-        </div>
+      {/* Portada + botón */}
+      <section className="bg-[#0a0a0a] flex flex-col items-center gap-5 py-8 px-4 border-b border-border" style={{ boxShadow: '0 4px 24px 0 rgba(0,0,0,0.18)' }}>
+        {carouselImages[0] && (
+          <img src={carouselImages[0].url} alt="" className="max-h-36 w-auto max-w-xs object-contain" />
+        )}
+        <a href="#seleccion-servicio"
+          className="rounded-2xl px-8 py-4 text-lg font-semibold transition-all duration-200 hover:-translate-y-0.5"
+          style={{
+            border: '1px solid rgba(var(--primary-rgb),0.55)',
+            background: 'linear-gradient(to bottom, rgba(var(--primary-rgb),0.12), rgba(var(--primary-rgb),0.06))',
+            boxShadow: '0 0 0 1px rgba(var(--primary-rgb),0.2), 0 16px 40px rgba(var(--primary-rgb),0.18)',
+            color: 'var(--primary)',
+          }}>
+          Reserva tu turno
+        </a>
       </section>
 
       {/* Progress Steps */}
@@ -331,7 +328,14 @@ export default function ReservasPublicas() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-medium">{b.nombre_completo}</h3>
-                      <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
+                      {b.especialidades && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {b.especialidades.split(',').map((e: string) => e.trim()).filter(Boolean).map((esp: string) => (
+                            <span key={esp} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{esp}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
                         <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                         <span>{Number(b.rating_promedio).toFixed(1)}</span>
                       </div>
@@ -538,6 +542,24 @@ export default function ReservasPublicas() {
               </p>
             </div>
           </div>
+
+          {barberia?.maps_embed && (
+            <div className="border-t border-border pt-6 mb-6">
+              <h4 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
+                <MapPin className="size-4" /> Cómo llegar
+              </h4>
+              <div className="overflow-hidden rounded-xl w-full h-48">
+                <iframe
+                  src={barberia.maps_embed}
+                  width="100%" height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-border pt-5 flex items-center justify-center text-muted-foreground">
             <span className="text-xs">Powered by BarberSaaS</span>

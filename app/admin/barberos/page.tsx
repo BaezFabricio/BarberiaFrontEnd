@@ -25,6 +25,7 @@ type Barbero = {
   puede_cobrar?: boolean
   puede_vender?: boolean
   estado?: string
+  especialidades?: string
   persona: { nombre_completo: string; telefono: string; correo_electronico: string; foto_url?: string }
 }
 
@@ -80,7 +81,7 @@ export default function BarberosPage() {
 
   const [editBarbero, setEditBarbero] = useState<Barbero | null>(null)
   const [modalEditar, setModalEditar] = useState(false)
-  const [formEditar, setFormEditar] = useState({ nombre_completo: '', telefono: '', correo_electronico: '', comision_porcentaje: '', puede_cobrar: false, puede_vender: false })
+  const [formEditar, setFormEditar] = useState({ nombre_completo: '', telefono: '', correo_electronico: '', comision_porcentaje: '', puede_cobrar: false, puede_vender: false, especialidades: '' })
   const [loadingEditar, setLoadingEditar] = useState(false)
   const [errorEditar, setErrorEditar] = useState('')
 
@@ -185,7 +186,7 @@ export default function BarberosPage() {
 
   const abrirEditar = (b: Barbero) => {
     setEditBarbero(b)
-    setFormEditar({ nombre_completo: b.persona.nombre_completo, telefono: b.persona.telefono, correo_electronico: b.persona.correo_electronico, comision_porcentaje: String(b.comision_porcentaje), puede_cobrar: !!b.puede_cobrar, puede_vender: !!b.puede_vender })
+    setFormEditar({ nombre_completo: b.persona.nombre_completo, telefono: b.persona.telefono, correo_electronico: b.persona.correo_electronico, comision_porcentaje: String(b.comision_porcentaje), puede_cobrar: !!b.puede_cobrar, puede_vender: !!b.puede_vender, especialidades: b.especialidades ?? '' })
     setErrorEditar('')
     setModalEditar(true)
   }
@@ -468,6 +469,11 @@ export default function BarberosPage() {
             <div className="space-y-1.5">
               <Label>Comisión (%)</Label>
               <Input type="number" min="0" max="100" value={formEditar.comision_porcentaje} onChange={e => setFormEditar(p => ({ ...p, comision_porcentaje: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Especialidades</Label>
+              <Input value={formEditar.especialidades} onChange={e => setFormEditar(p => ({ ...p, especialidades: e.target.value }))} placeholder="Corte clásico, Barba, Fade" />
+              <p className="text-xs text-muted-foreground">Separadas por coma. Se muestran como tags en la página de reservas.</p>
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
               <div>

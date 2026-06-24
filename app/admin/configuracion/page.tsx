@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save, Bell } from 'lucide-react'
+import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save, Bell, ImagePlus, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 
@@ -49,11 +49,13 @@ function SectionTitle({ icon: Icon, title, subtitle }: { icon: React.ElementType
 
 export default function ConfiguracionPage() {
   const [color, setColor] = useState('#d4a843')
-  const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '' })
+  const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '', slogan: '', color_portada: '#ffffff', color_nombre_1: '#ffffff', color_nombre_2: '#d4a843', texto_portada_1: '', texto_portada_2: '', color_header_1: '#ffffff', color_header_2: '#d4a843', maps_embed: '' })
   const [horarios, setHorarios] = useState({ lv_desde: '09:00', lv_hasta: '19:00', sab_desde: '09:00', sab_hasta: '15:00', domingo_cerrado: true })
   const [reservas, setReservas] = useState({ duracion: '40', cancelacion: '60', confirmacion: '60', online: true, orden_llegada: true, inactividad: '60' })
   const [redes, setRedes] = useState({ instagram: '', facebook: '', whatsapp: '' })
   const [notif, setNotif] = useState({ gmail_remitente: '', gmail_password: '', whatsapp_barbero: '', callmebot_apikey: '' })
+  const [carrusel, setCarrusel] = useState<{ idimagen: number; url: string }[]>([])
+  const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [exito, setExito] = useState(false)
   const [errorHorario, setErrorHorario] = useState('')
@@ -83,9 +85,34 @@ export default function ConfiguracionPage() {
   type HorarioBarbero = { dia_semana: number; hora_apertura: string; hora_cierre: string; barbero_nombre?: string }
   type BarberoConHorario = { idusuario: number; persona: { nombre_completo: string }; horarios: HorarioBarbero[] }
 
+  const cargarCarrusel = () => api.get<{ idimagen: number; url: string }[]>('/carrusel').then(setCarrusel).catch(() => {})
+
+  const subirFotoCarrusel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Eliminar imagen anterior si existe
+    if (carrusel[0]) await api.delete(`/carrusel/${carrusel[0].idimagen}`).catch(() => {})
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    setSubiendoFoto(true)
+    try {
+      const formData = new FormData()
+      files.forEach(f => formData.append('imagenes', f))
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${BACKEND_URL}/api/carrusel`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData })
+      if (!res.ok) throw new Error()
+      cargarCarrusel()
+    } catch { } finally { setSubiendoFoto(false); e.target.value = '' }
+  }
+
+  const eliminarFotoCarrusel = async (id: number) => {
+    await api.delete(`/carrusel/${id}`)
+    cargarCarrusel()
+  }
+
   useEffect(() => {
+    cargarCarrusel()
     api.get<Barberia>('/mi-barberia').then(d => {
-      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '' })
+      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '', slogan: d.slogan ?? '', color_portada: d.color_portada ?? '#ffffff', color_nombre_1: d.color_nombre_1 ?? '#ffffff', color_nombre_2: d.color_nombre_2 ?? '#d4a843', texto_portada_1: d.texto_portada_1 ?? '', texto_portada_2: d.texto_portada_2 ?? '', color_header_1: d.color_header_1 ?? '#ffffff', color_header_2: d.color_header_2 ?? '#d4a843', maps_embed: d.maps_embed ?? '' })
       if (d.color_primario) { setColor(d.color_primario); aplicarColor(d.color_primario) }
       setHorarios({ lv_desde: d.horario_lv_desde ?? '09:00', lv_hasta: d.horario_lv_hasta ?? '19:00', sab_desde: d.horario_sab_desde ?? '09:00', sab_hasta: d.horario_sab_hasta ?? '15:00', domingo_cerrado: d.domingo_cerrado ?? true })
       setReservas({ duracion: String(d.duracion_turno ?? 40), cancelacion: String(d.tiempo_cancelacion ?? 60), confirmacion: String(d.tiempo_confirmacion ?? 60), online: d.reservas_online ?? true, orden_llegada: d.orden_llegada ?? true, inactividad: String(d.dias_inactividad ?? 60) })
@@ -133,6 +160,15 @@ export default function ConfiguracionPage() {
         telefono:            negocio.telefono,
         direccion:           negocio.direccion,
         correo_negocio:      negocio.correo,
+        slogan:              negocio.slogan,
+        color_portada:       negocio.color_portada,
+        color_nombre_1:      negocio.color_nombre_1,
+        color_nombre_2:      negocio.color_nombre_2,
+        texto_portada_1:     negocio.texto_portada_1,
+        texto_portada_2:     negocio.texto_portada_2,
+        color_header_1:      negocio.color_header_1,
+        color_header_2:      negocio.color_header_2,
+        maps_embed:          negocio.maps_embed,
         color_primario:      color,
         horario_lv_desde:    horarios.lv_desde,
         horario_lv_hasta:    horarios.lv_hasta,
@@ -339,6 +375,11 @@ export default function ConfiguracionPage() {
               <Label className="text-xs text-muted-foreground">WhatsApp</Label>
               <Input value={redes.whatsapp} onChange={e => setRedes(p => ({ ...p, whatsapp: e.target.value }))} placeholder="+54 11 4567-8900" />
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Google Maps — URL del embed</Label>
+              <Input value={negocio.maps_embed} onChange={e => setNegocio(p => ({ ...p, maps_embed: e.target.value }))} placeholder="https://www.google.com/maps/embed?pb=..." />
+              <p className="text-xs text-muted-foreground">En Google Maps → Compartir → Insertar un mapa → copiá solo la URL del <code>src</code></p>
+            </div>
           </div>
         </div>
 
@@ -383,6 +424,33 @@ export default function ConfiguracionPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Carrusel de fotos */}
+        <div className="col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+          <SectionTitle icon={ImagePlus} title="Imagen de portada" subtitle="Se muestra en la página pública de la barbería" />
+          <label className={`relative group w-48 h-28 rounded-lg overflow-hidden border-2 border-dashed border-border cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center ${subiendoFoto ? 'opacity-50 pointer-events-none' : ''}`}>
+            {carrusel[0] ? (
+              <img src={carrusel[0].url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <ImagePlus className="size-6" />
+                <span className="text-xs">Subir imagen</span>
+              </div>
+            )}
+            {carrusel[0] && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ImagePlus className="size-5 text-white" />
+                <span className="text-xs text-white">Cambiar imagen</span>
+              </div>
+            )}
+            {subiendoFoto && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                <span className="text-xs text-white">Subiendo...</span>
+              </div>
+            )}
+            <input type="file" accept="image/*" className="hidden" onChange={subirFotoCarrusel} />
+          </label>
         </div>
 
         {/* Color del sistema - col span 2 */}
