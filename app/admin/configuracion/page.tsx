@@ -14,6 +14,9 @@ import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 type Barberia = {
   nombre_negocio: string; color_primario?: string
   telefono?: string; direccion?: string; correo_negocio?: string
+  slogan?: string; color_portada?: string; color_nombre_1?: string; color_nombre_2?: string
+  texto_portada_1?: string; texto_portada_2?: string; color_header_1?: string; color_header_2?: string
+  maps_embed?: string
   horario_lv_desde?: string; horario_lv_hasta?: string; horario_sab_desde?: string; horario_sab_hasta?: string; domingo_cerrado?: boolean
   duracion_turno?: number; tiempo_cancelacion?: number; tiempo_confirmacion?: number; reservas_online?: boolean; orden_llegada?: boolean; dias_inactividad?: number
   instagram?: string; facebook?: string; whatsapp_negocio?: string
