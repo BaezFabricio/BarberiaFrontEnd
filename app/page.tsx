@@ -81,7 +81,7 @@ export default function ReservasPublicas() {
     aplicarColorGuardado()
     const sub = getSubdominio()
     setSubdominio(sub)
-    if (!sub) { setLoadingBarberia(false); setErrorBarberia('No se pudo determinar la barbería'); return }
+    if (!sub) { window.location.href = '/login'; return }
     publicFetch<BarberiaPub>(`/barberia?subdominio=${sub}`)
       .then(data => { setBarberia(data); setLoadingBarberia(false); if (data.color_primario) aplicarColor(data.color_primario, true) })
       .catch(err => { setErrorBarberia(err.message); setLoadingBarberia(false) })
