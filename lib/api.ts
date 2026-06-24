@@ -1,4 +1,4 @@
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'https://barberiabackend.onrender.com';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL && !process.env.NEXT_PUBLIC_BACKEND_URL.includes('localhost')) ? process.env.NEXT_PUBLIC_BACKEND_URL : 'https://barberiabackend.onrender.com';
 const API_BASE = `${BACKEND_URL}/api`;
 
 // En producción extrae el subdominio de la URL del navegador.
