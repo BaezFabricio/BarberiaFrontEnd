@@ -14,8 +14,13 @@ import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 
 function getSubdominio(): string | null {
   if (typeof window === 'undefined') return null
+  // Subdominio real (dominio propio con wildcard)
   const parts = window.location.hostname.split('.')
   if (parts.length >= 3 && !parts.slice(-2).join('.').match(/vercel\.app|localhost/)) return parts[0]
+  // Fallback: parámetro ?b=subdominio en la URL
+  const params = new URLSearchParams(window.location.search)
+  const b = params.get('b')
+  if (b) return b
   return process.env.NEXT_PUBLIC_DEV_SUBDOMINIO ?? null
 }
 
@@ -82,6 +87,7 @@ export default function ReservasPublicas() {
     const sub = getSubdominio()
     setSubdominio(sub)
     if (!sub) { window.location.href = '/login'; return }
+
     publicFetch<BarberiaPub>(`/barberia?subdominio=${sub}`)
       .then(data => { setBarberia(data); setLoadingBarberia(false); if (data.color_primario) aplicarColor(data.color_primario, true) })
       .catch(err => { setErrorBarberia(err.message); setLoadingBarberia(false) })
