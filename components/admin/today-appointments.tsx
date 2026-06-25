@@ -46,12 +46,12 @@ export function TodayAppointments({ appointments, onStatusChange }: TodayAppoint
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
           <CardTitle className="text-lg">Turnos de Hoy</CardTitle>
           <CardDescription>{appointments.length} turnos programados</CardDescription>
         </div>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" asChild className="shrink-0">
           <a href="/admin/agenda">Ver agenda completa</a>
         </Button>
       </CardHeader>
