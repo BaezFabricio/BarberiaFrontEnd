@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil, Trash2, KeyRound } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Image from 'next/image'
@@ -85,6 +85,16 @@ export default function BarberosPage() {
   const [loadingEditar, setLoadingEditar] = useState(false)
   const [errorEditar, setErrorEditar] = useState('')
 
+  const [eliminarBarbero, setEliminarBarbero] = useState<Barbero | null>(null)
+  const [modalEliminar, setModalEliminar] = useState(false)
+  const [loadingEliminar, setLoadingEliminar] = useState(false)
+
+  const [passBarb, setPassBarb] = useState<Barbero | null>(null)
+  const [modalPass, setModalPass] = useState(false)
+  const [nuevaPass, setNuevaPass] = useState('')
+  const [loadingPass, setLoadingPass] = useState(false)
+  const [errorPass, setErrorPass] = useState('')
+
   const cargar = async () => {
     try { setBarberos(await api.get<Barbero[]>('/barberos')) } catch { setBarberos([]) }
   }
@@ -113,6 +123,26 @@ export default function BarberosPage() {
     const nuevoEstado = (b.estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo'
     await api.patch(`/barberos/${b.idusuario}/estado`, { estado: nuevoEstado })
     cargar()
+  }
+
+  const confirmarEliminar = async () => {
+    if (!eliminarBarbero) return
+    setLoadingEliminar(true)
+    try {
+      await api.delete(`/barberos/${eliminarBarbero.idusuario}`)
+      setModalEliminar(false)
+      cargar()
+    } catch { } finally { setLoadingEliminar(false) }
+  }
+
+  const cambiarPassword = async () => {
+    if (!passBarb || nuevaPass.length < 6) return setErrorPass('La contraseña debe tener al menos 6 caracteres.')
+    setLoadingPass(true); setErrorPass('')
+    try {
+      await api.patch(`/barberos/${passBarb.idusuario}/password`, { password: nuevaPass })
+      setModalPass(false); setNuevaPass('')
+    } catch (e: unknown) { setErrorPass(e instanceof Error ? e.message : 'Error') }
+    finally { setLoadingPass(false) }
   }
 
   const abrirHorarios = async (b: Barbero) => {
@@ -313,10 +343,16 @@ export default function BarberosPage() {
                             <DropdownMenuItem onClick={() => abrirHorarios(b)}>
                               <Clock className="mr-2 size-4" />Configurar horarios
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setPassBarb(b); setNuevaPass(''); setErrorPass(''); setModalPass(true) }}>
+                              <KeyRound className="mr-2 size-4" />Cambiar contraseña
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => toggleEstado(b)}>
                               <Power className="mr-2 size-4" />
                               {(b.estado ?? 'activo') === 'activo' ? 'Desactivar' : 'Activar'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setEliminarBarbero(b); setModalEliminar(true) }}>
+                              <Trash2 className="mr-2 size-4" />Eliminar barbero
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -539,6 +575,48 @@ export default function BarberosPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalFoto(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal cambiar contraseña */}
+      <Dialog open={modalPass} onOpenChange={setModalPass}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña</DialogTitle>
+            <DialogDescription>{passBarb?.persona.nombre_completo}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nueva contraseña</Label>
+              <Input type="password" placeholder="Mín. 6 caracteres" value={nuevaPass}
+                onChange={e => setNuevaPass(e.target.value)} />
+            </div>
+            {errorPass && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorPass}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalPass(false)}>Cancelar</Button>
+            <Button onClick={cambiarPassword} disabled={loadingPass || nuevaPass.length < 6}>
+              {loadingPass ? 'Guardando...' : 'Cambiar contraseña'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmar eliminación */}
+      <Dialog open={modalEliminar} onOpenChange={setModalEliminar}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar barbero</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro que querés eliminar a <strong>{eliminarBarbero?.persona.nombre_completo}</strong>? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalEliminar(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmarEliminar} disabled={loadingEliminar}>
+              {loadingEliminar ? 'Eliminando...' : 'Sí, eliminar'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
