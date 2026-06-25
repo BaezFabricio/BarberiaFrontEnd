@@ -70,6 +70,8 @@ export default function AdminDashboard() {
   const [pagosRango, setPagosRango] = useState<Pago[]>([])
   const [rankingRango, setRankingRango] = useState<RankingBarbero[]>([])
 
+  const cargarTurnos = () => api.get<Turno[]>(`/turnos?fecha=${hoy}`).then(setTurnosHoy).catch(() => {})
+
   // Carga estática (no cambia con el período)
   useEffect(() => {
     Promise.allSettled([
@@ -85,6 +87,13 @@ export default function AdminDashboard() {
       if (clts.status === 'fulfilled') setTotalClientes(clts.value.length)
       if (inactivos.status === 'fulfilled') setInactivosCount(inactivos.value.inactivos.length)
     })
+  }, [hoy])
+
+  // Recargar turnos al volver al dashboard
+  useEffect(() => {
+    const onFocus = () => cargarTurnos()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [hoy])
 
   // Carga dinámica según período seleccionado
@@ -192,8 +201,7 @@ export default function AdminDashboard() {
           <div className="lg:col-span-2">
             <TodayAppointments appointments={turnosAdaptados as any} onStatusChange={async (id, estado) => {
               await api.put(`/turnos/${id}/estado`, { estado })
-              const turnos = await api.get<Turno[]>(`/turnos?fecha=${hoy}`)
-              setTurnosHoy(turnos)
+              cargarTurnos()
             }} />
           </div>
           <div className="space-y-6">
