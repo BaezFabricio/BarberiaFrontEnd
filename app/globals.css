@@ -150,6 +150,13 @@
   }
 }
 
+/* Mobile: sidebar no empuja el contenido */
+@media (max-width: 767px) {
+  [data-slot="sidebar-inset"] {
+    margin-left: 0 !important;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

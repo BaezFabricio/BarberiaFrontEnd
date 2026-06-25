@@ -132,7 +132,7 @@ function Logo() {
         <input ref={inputRef} type="file" accept="image/*" className="hidden"
           onChange={e => e.target.files?.[0] && handleLogoChange(e.target.files[0])} />
       </button>
-      <Link href="/admin" className="flex flex-col min-w-0 overflow-hidden">
+      <Link href="/admin" className="flex flex-col min-w-0 overflow-hidden group-data-[collapsible=icon]:hidden">
         <span className="text-sm font-bold text-foreground truncate">{barberia?.nombre_negocio ?? 'Mi Barbería'}</span>
         <span className="text-xs text-muted-foreground truncate">Sistema de Gestión</span>
       </Link>
@@ -190,7 +190,7 @@ function AdminSidebar() {
     : 'AD'
 
   return (
-    <Sidebar collapsible="offcanvas" className="border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <Logo />
       </SidebarHeader>
