@@ -330,7 +330,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <SidebarProvider defaultOpen={false}>
       <AdminRouteTransition />
       <AdminSidebar />
-      <SidebarInset className="flex flex-col">
+      <SidebarInset className="flex flex-col min-w-0 overflow-hidden">
         {children}
       </SidebarInset>
     </SidebarProvider>
