@@ -190,7 +190,11 @@ export default function AdminDashboard() {
         />
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <TodayAppointments appointments={turnosAdaptados as any} />
+            <TodayAppointments appointments={turnosAdaptados as any} onStatusChange={async (id, estado) => {
+              await api.put(`/turnos/${id}/estado`, { estado })
+              const turnos = await api.get<Turno[]>(`/turnos?fecha=${hoy}`)
+              setTurnosHoy(turnos)
+            }} />
           </div>
           <div className="space-y-6">
             <BarberPerformance barbers={barberosAdaptados as any} />
