@@ -54,7 +54,7 @@ export function BarberPerformance({ barbers }: BarberPerformanceProps) {
                     <p className="truncate font-medium text-foreground">
                       {barber.nombre}
                     </p>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground ml-2">
                       <Star className="size-3 fill-primary text-primary" />
                       <span>{barber.estadisticas.calificacionPromedio}</span>
                     </div>
