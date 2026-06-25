@@ -45,7 +45,7 @@ export function TodayAppointments({ appointments, onStatusChange }: TodayAppoint
   )
 
   return (
-    <Card>
+    <Card className="overflow-hidden min-w-0">
       <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
         <div className="min-w-0">
           <CardTitle className="text-lg">Turnos de Hoy</CardTitle>

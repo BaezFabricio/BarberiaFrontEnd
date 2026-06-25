@@ -33,7 +33,7 @@ export function BarberPerformance({ barbers }: BarberPerformanceProps) {
   const maxIncome = Math.max(...activeBarbers.map(b => b.estadisticas.ingresosMes))
 
   return (
-    <Card>
+    <Card className="overflow-hidden min-w-0">
       <CardHeader>
         <CardTitle className="text-lg">Rendimiento de Barberos</CardTitle>
         <CardDescription>Estadisticas del mes actual</CardDescription>

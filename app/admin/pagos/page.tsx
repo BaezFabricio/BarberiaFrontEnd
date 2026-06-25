@@ -243,14 +243,14 @@ export default function PagosPage() {
         )}
 
         {/* Tabs servicios / productos */}
-        <Tabs defaultValue="servicios" onValueChange={v => setTabActivo(v as 'servicios' | 'productos')}>
+        <Tabs defaultValue="servicios" onValueChange={v => setTabActivo(v as 'servicios' | 'productos')} className="w-full">
           <TabsList>
             <TabsTrigger value="servicios" className="gap-2"><Scissors className="size-4" />Servicios</TabsTrigger>
             <TabsTrigger value="productos" className="gap-2"><ShoppingBag className="size-4" />Productos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="servicios" className="mt-4">
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader><CardTitle className="text-base">Historial de cobros</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto"><Table>
@@ -284,7 +284,7 @@ export default function PagosPage() {
           </TabsContent>
 
           <TabsContent value="productos" className="mt-4">
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader><CardTitle className="text-base">Ventas de productos</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto"><Table>
