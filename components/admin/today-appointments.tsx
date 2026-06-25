@@ -70,7 +70,7 @@ export function TodayAppointments({ appointments, onStatusChange }: TodayAppoint
                 <div
                   key={appointment.id}
                   className={cn(
-                    'flex items-center gap-4 px-6 py-4 transition-colors hover:bg-muted/50',
+                    'flex items-center gap-2 px-3 py-4 md:gap-4 md:px-6 transition-colors hover:bg-muted/50',
                     appointment.estado === 'finalizado' && 'opacity-60'
                   )}
                 >
