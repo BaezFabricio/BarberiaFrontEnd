@@ -42,6 +42,11 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
     });
 
     const data = await res.json();
+    if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        throw new Error('Sesión expirada');
+    }
     if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
     return data as T;
 }
