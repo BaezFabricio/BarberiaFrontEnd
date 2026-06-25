@@ -112,7 +112,7 @@ function Logo() {
   }
 
   return (
-    <div className="flex items-center gap-3 px-2 py-1">
+    <div className="flex items-center gap-3 px-2 py-1 min-w-0 overflow-hidden">
       <button
         type="button"
         title="Cambiar logo"
@@ -132,9 +132,9 @@ function Logo() {
         <input ref={inputRef} type="file" accept="image/*" className="hidden"
           onChange={e => e.target.files?.[0] && handleLogoChange(e.target.files[0])} />
       </button>
-      <Link href="/admin" className="flex flex-col">
-        <span className="text-sm font-bold text-foreground">{barberia?.nombre_negocio ?? 'Mi Barbería'}</span>
-        <span className="text-xs text-muted-foreground">Sistema de Gestión</span>
+      <Link href="/admin" className="flex flex-col min-w-0 overflow-hidden group-data-[collapsible=icon]:hidden">
+        <span className="text-sm font-bold text-foreground truncate">{barberia?.nombre_negocio ?? 'Mi Barbería'}</span>
+        <span className="text-xs text-muted-foreground truncate">Sistema de Gestión</span>
       </Link>
     </div>
   )
@@ -327,7 +327,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={typeof window !== 'undefined' && window.innerWidth >= 768}>
+    <SidebarProvider defaultOpen={typeof window !== 'undefined' && window.innerWidth >= 768} style={{ overflow: 'hidden', maxWidth: '100vw' }}>
       <AdminRouteTransition />
       <AdminSidebar />
       <SidebarInset className="flex flex-col min-w-0 overflow-hidden">
