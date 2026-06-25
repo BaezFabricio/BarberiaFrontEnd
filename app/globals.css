@@ -145,15 +145,24 @@
   }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
-    max-width: 100vw;
   }
 }
 
-/* Mobile: sidebar no empuja el contenido */
+/* Evitar overflow horizontal global */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Mobile: sidebar como overlay, no empuja contenido */
 @media (max-width: 767px) {
+  [data-slot="sidebar-wrapper"] {
+    --sidebar-width: 0px !important;
+  }
   [data-slot="sidebar-inset"] {
     margin-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
 }
 
