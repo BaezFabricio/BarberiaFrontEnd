@@ -327,7 +327,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AdminRouteTransition />
       <AdminSidebar />
       <SidebarInset className="flex flex-col">
