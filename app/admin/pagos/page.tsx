@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DollarSign, CreditCard, Banknote, Smartphone, Plus, Scissors, Calendar, ShoppingBag } from 'lucide-react'
 import { api } from '@/lib/api'
 
@@ -242,81 +241,85 @@ export default function PagosPage() {
           </Card>
         )}
 
-        {/* Tabs servicios / productos */}
-        <Tabs defaultValue="servicios" onValueChange={v => setTabActivo(v as 'servicios' | 'productos')} className="w-full">
-          <TabsList>
-            <TabsTrigger value="servicios" className="gap-2"><Scissors className="size-4" />Servicios</TabsTrigger>
-            <TabsTrigger value="productos" className="gap-2"><ShoppingBag className="size-4" />Productos</TabsTrigger>
-          </TabsList>
+        {/* Toggle Servicios / Productos */}
+        <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1 w-full">
+          <button
+            onClick={() => setTabActivo('servicios')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${tabActivo === 'servicios' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <Scissors className="size-4" /> Servicios
+          </button>
+          <button
+            onClick={() => setTabActivo('productos')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${tabActivo === 'productos' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <ShoppingBag className="size-4" /> Productos
+          </button>
+        </div>
 
-          <TabsContent value="servicios" className="mt-4">
-            <Card className="overflow-hidden">
-              <CardHeader><CardTitle className="text-base">Historial de cobros</CardTitle></CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto"><Table>
+        {/* Historial */}
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {tabActivo === 'servicios' ? 'Historial de cobros' : 'Ventas de productos'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              {tabActivo === 'servicios' ? (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Cliente</TableHead>
-                      <TableHead className="hidden md:table-cell">Servicio</TableHead>
-                      <TableHead className="hidden sm:table-cell">Barbero</TableHead>
+                      <TableHead className="hidden sm:table-cell">Servicio</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead className="hidden sm:table-cell">Método</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pagos.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No hay cobros en este período</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No hay cobros en este período</TableCell></TableRow>
                     ) : pagos.map(p => (
                       <TableRow key={p.idpago}>
-                        <TableCell className="text-sm text-muted-foreground">{fmtFecha(p.fecha_pago)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{fmtFecha(p.fecha_pago)}</TableCell>
                         <TableCell className="font-medium">{p.agenda_turno?.cliente?.persona?.nombre_completo ?? '—'}</TableCell>
-                        <TableCell className="hidden md:table-cell">{p.agenda_turno?.servicio?.nombre_servicio ?? '—'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{p.agenda_turno?.barbero?.persona?.nombre_completo ?? '—'}</TableCell>
-                        <TableCell className="font-semibold text-green-500">{fmt(parseFloat(p.monto_pago))}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{p.agenda_turno?.servicio?.nombre_servicio ?? '—'}</TableCell>
+                        <TableCell className="font-semibold text-green-500 whitespace-nowrap">{fmt(parseFloat(p.monto_pago))}</TableCell>
                         <TableCell className="hidden sm:table-cell">{metodoBadge(p.metodo_pago)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table></div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="productos" className="mt-4">
-            <Card className="overflow-hidden">
-              <CardHeader><CardTitle className="text-base">Ventas de productos</CardTitle></CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto"><Table>
+                </Table>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Producto</TableHead>
-                      <TableHead className="hidden sm:table-cell">Cantidad</TableHead>
-                      <TableHead className="hidden sm:table-cell">Barbero</TableHead>
+                      <TableHead className="hidden sm:table-cell">Cant.</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead className="hidden sm:table-cell">Método</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ventas.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No hay ventas en este período</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No hay ventas en este período</TableCell></TableRow>
                     ) : ventas.map(v => (
                       <TableRow key={v.idventa}>
-                        <TableCell className="text-sm text-muted-foreground">{fmtFecha(v.fecha_venta)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{fmtFecha(v.fecha_venta)}</TableCell>
                         <TableCell className="font-medium">{v.producto?.nombre_producto ?? '—'}</TableCell>
                         <TableCell className="hidden sm:table-cell">{v.cantidad}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{v.barbero?.persona?.nombre_completo ?? '—'}</TableCell>
-                        <TableCell className="font-semibold text-green-500">{fmt(parseFloat(v.monto_total))}</TableCell>
+                        <TableCell className="font-semibold text-green-500 whitespace-nowrap">{fmt(parseFloat(v.monto_total))}</TableCell>
                         <TableCell className="hidden sm:table-cell">{metodoBadge(v.metodo_pago)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table></div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </Table>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Modal nueva venta */}

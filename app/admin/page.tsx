@@ -197,14 +197,14 @@ export default function AdminDashboard() {
           clientesInactivos={inactivosCount}
           productosStockBajo={productosStockBajo}
         />
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        <div className="grid gap-6 lg:grid-cols-3 min-w-0">
+          <div className="lg:col-span-2 min-w-0">
             <TodayAppointments appointments={turnosAdaptados as any} onStatusChange={async (id, estado) => {
               await api.put(`/turnos/${id}/estado`, { estado })
               cargarTurnos()
             }} />
           </div>
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <BarberPerformance barbers={barberosAdaptados as any} />
             <LowStockAlert products={productosAdaptados} />
           </div>
