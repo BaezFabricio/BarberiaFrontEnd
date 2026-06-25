@@ -58,6 +58,8 @@ export default function PagosPage() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
+  const [tabActivo, setTabActivo] = useState<'servicios' | 'productos'>('servicios')
+
   // Ventas de productos
   const [ventas, setVentas] = useState<Venta[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
@@ -99,6 +101,22 @@ export default function PagosPage() {
   }
 
   const productoSel = productos.find(p => p.idproducto === Number(formVenta.idproducto))
+
+  const resumenServicios = {
+    total: pagos.reduce((s, p) => s + parseFloat(String(p.monto_pago)), 0),
+    efectivo: pagos.filter(p => p.metodo_pago === 'efectivo').reduce((s, p) => s + parseFloat(String(p.monto_pago)), 0),
+    transferencia: pagos.filter(p => p.metodo_pago === 'transferencia').reduce((s, p) => s + parseFloat(String(p.monto_pago)), 0),
+    tarjeta: pagos.filter(p => p.metodo_pago === 'tarjeta').reduce((s, p) => s + parseFloat(String(p.monto_pago)), 0),
+    cantidad: pagos.length,
+  }
+  const resumenProductos = {
+    total: ventas.reduce((s, v) => s + parseFloat(String(v.monto_total)), 0),
+    efectivo: ventas.filter(v => v.metodo_pago === 'efectivo').reduce((s, v) => s + parseFloat(String(v.monto_total)), 0),
+    transferencia: ventas.filter(v => v.metodo_pago === 'transferencia').reduce((s, v) => s + parseFloat(String(v.monto_total)), 0),
+    tarjeta: ventas.filter(v => v.metodo_pago === 'tarjeta').reduce((s, v) => s + parseFloat(String(v.monto_total)), 0),
+    cantidad: ventas.length,
+  }
+  const resumenActivo = tabActivo === 'servicios' ? resumenServicios : resumenProductos
 
   const abrirModal = (t: Turno) => {
     setTurnoSel(t)
@@ -153,8 +171,8 @@ export default function PagosPage() {
               <DollarSign className="size-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{fmt(resumen.total)}</div>
-              <p className="text-xs text-muted-foreground">{resumen.cantidad} cobros</p>
+              <div className="text-2xl font-bold text-primary">{fmt(resumenActivo.total)}</div>
+              <p className="text-xs text-muted-foreground">{resumenActivo.cantidad} cobros</p>
             </CardContent>
           </Card>
           <Card>
@@ -162,21 +180,21 @@ export default function PagosPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Efectivo</CardTitle>
               <Banknote className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{fmt(resumen.efectivo)}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{fmt(resumenActivo.efectivo)}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Transferencia</CardTitle>
               <Smartphone className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{fmt(resumen.transferencia)}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{fmt(resumenActivo.transferencia)}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Tarjeta</CardTitle>
               <CreditCard className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{fmt(resumen.tarjeta)}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{fmt(resumenActivo.tarjeta)}</div></CardContent>
           </Card>
         </div>
 
@@ -225,7 +243,7 @@ export default function PagosPage() {
         )}
 
         {/* Tabs servicios / productos */}
-        <Tabs defaultValue="servicios">
+        <Tabs defaultValue="servicios" onValueChange={v => setTabActivo(v as 'servicios' | 'productos')}>
           <TabsList>
             <TabsTrigger value="servicios" className="gap-2"><Scissors className="size-4" />Servicios</TabsTrigger>
             <TabsTrigger value="productos" className="gap-2"><ShoppingBag className="size-4" />Productos</TabsTrigger>
