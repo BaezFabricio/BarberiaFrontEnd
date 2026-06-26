@@ -326,7 +326,12 @@ export default function BarberosPage() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={b.rol === 'admin' ? 'default' : 'secondary'}>{b.rol}</Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant={b.rol === 'admin' ? 'default' : 'secondary'}>{b.rol}</Badge>
+                          <Badge variant={(b.estado ?? 'activo') === 'activo' ? 'outline' : 'destructive'} className={(b.estado ?? 'activo') === 'activo' ? 'text-green-600 border-green-600/40' : ''}>
+                            {(b.estado ?? 'activo') === 'activo' ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
