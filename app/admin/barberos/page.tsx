@@ -294,7 +294,8 @@ export default function BarberosPage() {
                     <TableHead className="hidden md:table-cell">Contacto</TableHead>
                     <TableHead className="hidden sm:table-cell">Comisión</TableHead>
                     <TableHead className="hidden sm:table-cell">Rating</TableHead>
-                    <TableHead>Rol</TableHead>
+                    <TableHead className="hidden sm:table-cell">Rol</TableHead>
+                    <TableHead>Estado</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -325,13 +326,13 @@ export default function BarberosPage() {
                           {Number(b.rating_promedio).toFixed(1)}
                         </span>
                       </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant={b.rol === 'admin' ? 'default' : 'secondary'}>{b.rol}</Badge>
+                      </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          <Badge variant={b.rol === 'admin' ? 'default' : 'secondary'}>{b.rol}</Badge>
-                          <Badge variant={(b.estado ?? 'activo') === 'activo' ? 'outline' : 'destructive'} className={(b.estado ?? 'activo') === 'activo' ? 'text-green-600 border-green-600/40' : ''}>
-                            {(b.estado ?? 'activo') === 'activo' ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </div>
+                        <Badge variant={(b.estado ?? 'activo') === 'activo' ? 'outline' : 'destructive'} className={(b.estado ?? 'activo') === 'activo' ? 'text-green-600 border-green-600/40' : ''}>
+                          {(b.estado ?? 'activo') === 'activo' ? 'Activo' : 'Inactivo'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
