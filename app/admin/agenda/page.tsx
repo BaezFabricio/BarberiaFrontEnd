@@ -222,7 +222,7 @@ export default function AgendaPage() {
                   <Select value={nuevoTurno.idusuario_barbero} onValueChange={v => setNuevoTurno(p => ({ ...p, idusuario_barbero: v }))}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
                     <SelectContent>
-                      {barberos.map(b => (
+                      {barberos.filter(b => (b.estado ?? 'activo') === 'activo').map(b => (
                         <SelectItem key={b.idusuario} value={String(b.idusuario)}>
                           {b.persona.nombre_completo}
                         </SelectItem>
@@ -280,7 +280,7 @@ export default function AgendaPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los barberos</SelectItem>
-                {barberos.map(b => (
+                {barberos.filter(b => (b.estado ?? 'activo') === 'activo').map(b => (
                   <SelectItem key={b.idusuario} value={String(b.idusuario)}>{b.persona.nombre_completo}</SelectItem>
                 ))}
               </SelectContent>
