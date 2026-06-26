@@ -48,6 +48,7 @@ type BarberiaPub = {
   texto_portada_2?: string | null
   color_header_1?: string | null
   color_header_2?: string | null
+  fuente_header?: string | null
   maps_embed?: string | null
   servicios: Servicio[]; barberos: Barbero[]
 }
