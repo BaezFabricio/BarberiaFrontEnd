@@ -229,11 +229,12 @@ export default function ReservasPublicas() {
                 <Scissors className="h-5 w-5 text-primary" />
               )}
             </div>
-            {barberia?.slogan && (
-              <span className="hidden sm:block text-sm text-muted-foreground italic truncate max-w-[240px]">
-                {barberia.slogan}
-              </span>
-            )}
+            <div className="flex min-w-0 flex-col">
+              <span className="font-semibold leading-tight truncate">{nombreBarberia}</span>
+              {barberia?.slogan && (
+                <span className="text-xs text-muted-foreground italic truncate">{barberia.slogan}</span>
+              )}
+            </div>
           </div>
           <ThemeToggle />
         </div>
