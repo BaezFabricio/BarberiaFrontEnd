@@ -230,7 +230,7 @@ export default function ReservasPublicas() {
               )}
             </div>
             <div className="flex min-w-0 flex-col">
-              <span className="font-semibold leading-tight truncate">{nombreBarberia}</span>
+              <span className="font-semibold leading-tight truncate text-primary">{nombreBarberia}</span>
               {barberia?.slogan && (
                 <span className="text-xs text-muted-foreground italic truncate">{barberia.slogan}</span>
               )}
