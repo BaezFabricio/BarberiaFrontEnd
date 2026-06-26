@@ -45,7 +45,7 @@ type Turno = {
 }
 
 type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number; estado: string }
-type Barbero = { idusuario: number; persona: { nombre_completo: string } }
+type Barbero = { idusuario: number; estado?: string; persona: { nombre_completo: string } }
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   pendiente:  { label: 'Pendiente',  color: 'text-yellow-500',        bgColor: 'bg-yellow-400/10 border-yellow-400/20' },
