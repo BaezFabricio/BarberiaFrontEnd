@@ -15,7 +15,7 @@ type Barberia = {
   nombre_negocio: string; color_primario?: string
   telefono?: string; direccion?: string; correo_negocio?: string
   slogan?: string; color_portada?: string; color_nombre_1?: string; color_nombre_2?: string
-  texto_portada_1?: string; texto_portada_2?: string; color_header_1?: string; color_header_2?: string
+  texto_portada_1?: string; texto_portada_2?: string; color_header_1?: string; color_header_2?: string; fuente_header?: string
   maps_embed?: string
   horario_lv_desde?: string; horario_lv_hasta?: string; horario_sab_desde?: string; horario_sab_hasta?: string; domingo_cerrado?: boolean
   duracion_turno?: number; tiempo_cancelacion?: number; tiempo_confirmacion?: number; reservas_online?: boolean; orden_llegada?: boolean; dias_inactividad?: number
@@ -52,7 +52,7 @@ function SectionTitle({ icon: Icon, title, subtitle }: { icon: React.ElementType
 
 export default function ConfiguracionPage() {
   const [color, setColor] = useState('#d4a843')
-  const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '', slogan: '', color_portada: '#ffffff', color_nombre_1: '#ffffff', color_nombre_2: '#d4a843', texto_portada_1: '', texto_portada_2: '', color_header_1: '#ffffff', color_header_2: '#d4a843', maps_embed: '' })
+  const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '', slogan: '', color_portada: '#ffffff', color_nombre_1: '#ffffff', color_nombre_2: '#d4a843', texto_portada_1: '', texto_portada_2: '', color_header_1: '#ffffff', color_header_2: '#d4a843', fuente_header: 'Cinzel', maps_embed: '' })
   const [horarios, setHorarios] = useState({ lv_desde: '09:00', lv_hasta: '19:00', sab_desde: '09:00', sab_hasta: '15:00', domingo_cerrado: true })
   const [reservas, setReservas] = useState({ duracion: '40', cancelacion: '60', confirmacion: '60', online: true, orden_llegada: true, inactividad: '60' })
   const [redes, setRedes] = useState({ instagram: '', facebook: '', whatsapp: '' })
@@ -115,7 +115,7 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     cargarCarrusel()
     api.get<Barberia>('/mi-barberia').then(d => {
-      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '', slogan: d.slogan ?? '', color_portada: d.color_portada ?? '#ffffff', color_nombre_1: d.color_nombre_1 ?? '#ffffff', color_nombre_2: d.color_nombre_2 ?? '#d4a843', texto_portada_1: d.texto_portada_1 ?? '', texto_portada_2: d.texto_portada_2 ?? '', color_header_1: d.color_header_1 ?? '#ffffff', color_header_2: d.color_header_2 ?? '#d4a843', maps_embed: d.maps_embed ?? '' })
+      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '', slogan: d.slogan ?? '', color_portada: d.color_portada ?? '#ffffff', color_nombre_1: d.color_nombre_1 ?? '#ffffff', color_nombre_2: d.color_nombre_2 ?? '#d4a843', texto_portada_1: d.texto_portada_1 ?? '', texto_portada_2: d.texto_portada_2 ?? '', color_header_1: d.color_header_1 ?? '#ffffff', color_header_2: d.color_header_2 ?? '#d4a843', fuente_header: d.fuente_header ?? 'Cinzel', maps_embed: d.maps_embed ?? '' })
       if (d.color_primario) { setColor(d.color_primario); aplicarColor(d.color_primario) }
       setHorarios({ lv_desde: d.horario_lv_desde ?? '09:00', lv_hasta: d.horario_lv_hasta ?? '19:00', sab_desde: d.horario_sab_desde ?? '09:00', sab_hasta: d.horario_sab_hasta ?? '15:00', domingo_cerrado: d.domingo_cerrado ?? true })
       setReservas({ duracion: String(d.duracion_turno ?? 40), cancelacion: String(d.tiempo_cancelacion ?? 60), confirmacion: String(d.tiempo_confirmacion ?? 60), online: d.reservas_online ?? true, orden_llegada: d.orden_llegada ?? true, inactividad: String(d.dias_inactividad ?? 60) })
@@ -171,6 +171,7 @@ export default function ConfiguracionPage() {
         texto_portada_2:     negocio.texto_portada_2,
         color_header_1:      negocio.color_header_1,
         color_header_2:      negocio.color_header_2,
+        fuente_header:       negocio.fuente_header,
         maps_embed:          negocio.maps_embed,
         color_primario:      color,
         horario_lv_desde:    horarios.lv_desde,
@@ -434,6 +435,60 @@ export default function ConfiguracionPage() {
             )}
             <input type="file" accept="image/*" className="hidden" onChange={subirFotoCarrusel} />
           </label>
+        </div>
+
+        {/* Nombre en header — fuente y colores */}
+        <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+          <SectionTitle icon={Palette} title="Nombre en el header" subtitle="Fuente y colores del nombre que aparece en la página pública" />
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Fuente</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(['Cinzel','Playfair Display','Oswald','Bebas Neue','Abril Fatface','inherit'] as const).map(f => (
+                <button key={f} type="button"
+                  onClick={() => setNegocio(p => ({ ...p, fuente_header: f }))}
+                  className={`rounded-lg border px-3 py-2 text-left transition-colors ${negocio.fuente_header === f ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                  <span className="block text-xs text-muted-foreground mb-1">{f === 'inherit' ? 'Por defecto' : f}</span>
+                  <span style={{ fontFamily: f === 'inherit' ? undefined : `var(--font-${({'Cinzel':'cinzel','Playfair Display':'playfair','Oswald':'oswald','Bebas Neue':'bebas','Abril Fatface':'abril'} as Record<string,string>)[f] ?? 'cinzel'}), serif`, fontSize: '18px' }}>
+                    {negocio.nombre || 'Mi Barbería'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-6">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Color primera palabra</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={negocio.color_header_1 ?? '#ffffff'}
+                  onChange={e => setNegocio(p => ({ ...p, color_header_1: e.target.value }))}
+                  className="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+                <Input value={negocio.color_header_1 ?? '#ffffff'}
+                  onChange={e => e.target.value.match(/^#[0-9a-fA-F]{0,6}$/) && setNegocio(p => ({ ...p, color_header_1: e.target.value }))}
+                  className="h-8 w-28 font-mono text-xs" maxLength={7} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Color resto de palabras</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={negocio.color_header_2 ?? '#d4a843'}
+                  onChange={e => setNegocio(p => ({ ...p, color_header_2: e.target.value }))}
+                  className="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+                <Input value={negocio.color_header_2 ?? '#d4a843'}
+                  onChange={e => e.target.value.match(/^#[0-9a-fA-F]{0,6}$/) && setNegocio(p => ({ ...p, color_header_2: e.target.value }))}
+                  className="h-8 w-28 font-mono text-xs" maxLength={7} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Preview</Label>
+              <span style={{ fontFamily: negocio.fuente_header === 'inherit' ? undefined : `var(--font-${({'Cinzel':'cinzel','Playfair Display':'playfair','Oswald':'oswald','Bebas Neue':'bebas','Abril Fatface':'abril'} as Record<string,string>)[negocio.fuente_header] ?? 'cinzel'}), serif`, fontSize: '22px' }}>
+                {negocio.nombre.split(' ').map((p, i) => (
+                  <span key={i} style={{ color: i === 0 ? (negocio.color_header_1 ?? '#ffffff') : (negocio.color_header_2 ?? '#d4a843') }}>
+                    {i > 0 ? ' ' : ''}{p}
+                  </span>
+                ))}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Color del sistema - col span 2 */}

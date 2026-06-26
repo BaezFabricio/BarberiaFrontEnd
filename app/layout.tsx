@@ -1,17 +1,15 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Geist_Mono } from 'next/font/google'
+import { Inter, Geist_Mono, Cinzel, Playfair_Display, Oswald, Bebas_Neue, Abril_Fatface } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: '--font-inter'
-});
-
-const geistMono = Geist_Mono({ 
-  subsets: ["latin"],
-  variable: '--font-geist-mono'
-});
+const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: '--font-geist-mono' });
+const cinzel = Cinzel({ subsets: ["latin"], weight: "700", variable: '--font-cinzel' });
+const playfair = Playfair_Display({ subsets: ["latin"], weight: "700", variable: '--font-playfair' });
+const oswald = Oswald({ subsets: ["latin"], weight: "600", variable: '--font-oswald' });
+const bebasNeue = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: '--font-bebas' });
+const abrilFatface = Abril_Fatface({ subsets: ["latin"], weight: "400", variable: '--font-abril' });
 
 export const metadata: Metadata = {
   title: 'Barber Studio - Sistema de Gestion',
@@ -73,7 +71,7 @@ export default function RootLayout({
 })();
         ` }} />
       </head>
-      <body className={`${inter.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${geistMono.variable} ${cinzel.variable} ${playfair.variable} ${oswald.variable} ${bebasNeue.variable} ${abrilFatface.variable} font-sans antialiased`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

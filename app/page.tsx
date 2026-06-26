@@ -230,18 +230,12 @@ export default function ReservasPublicas() {
               )}
             </div>
             <div className="flex min-w-0 flex-col">
-              <span className="font-semibold leading-tight truncate">
-                {(() => {
-                  const palabras = nombreBarberia.split(' ')
-                  const c1 = barberia?.color_header_1 ?? undefined
-                  const c2 = barberia?.color_header_2 ?? undefined
-                  if (!c1 && !c2) return nombreBarberia
-                  return palabras.map((p, i) => (
-                    <span key={i} style={{ color: i === 0 ? (c1 ?? 'inherit') : (c2 ?? c1 ?? 'inherit') }}>
-                      {i > 0 ? ' ' : ''}{p}
-                    </span>
-                  ))
-                })()}
+              <span className="font-semibold leading-tight truncate" style={{ fontFamily: barberia?.fuente_header && barberia.fuente_header !== 'inherit' ? `var(--font-${({'Cinzel':'cinzel','Playfair Display':'playfair','Oswald':'oswald','Bebas Neue':'bebas','Abril Fatface':'abril'} as Record<string,string>)[barberia.fuente_header] ?? 'cinzel'}), serif` : undefined }}>
+                {nombreBarberia.split(' ').map((p, i) => (
+                  <span key={i} style={{ color: i === 0 ? (barberia?.color_header_1 ?? undefined) : (barberia?.color_header_2 ?? barberia?.color_header_1 ?? undefined) }}>
+                    {i > 0 ? ' ' : ''}{p}
+                  </span>
+                ))}
               </span>
               {barberia?.slogan && (
                 <span className="text-xs text-muted-foreground italic truncate">{barberia.slogan}</span>
