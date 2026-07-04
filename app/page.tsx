@@ -292,31 +292,35 @@ export default function ReservasPublicas() {
         {step === 1 && (
           <div id="seleccion-servicio" className="mx-auto max-w-2xl scroll-mt-24">
             <h2 className="mb-6 text-xl font-semibold">Selecciona un servicio</h2>
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {barberia.servicios.map(s => (
-                <Card key={s.idservicio} onClick={() => setSelectedServicio(s.idservicio)}
-                  className={`cursor-pointer border-2 transition-all hover:border-primary ${selectedServicio === s.idservicio ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-transparent'}`}>
-                  <CardContent className="flex items-center gap-4 p-4">
-                    {s.imagen_url && (
-                      <div className="h-24 w-28 shrink-0 overflow-hidden rounded-xl">
-                        <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
-                      </div>
-                    )}
-                    <div className="flex flex-1 items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{s.nombre_servicio}</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">{s.descripcion}</p>
-                        <span className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />{s.duracion_minutos} min
-                        </span>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-lg font-bold text-primary">${Number(s.precio).toLocaleString('es-AR')}</p>
-                        {selectedServicio === s.idservicio && <Check className="ml-auto mt-2 h-5 w-5 text-primary" />}
-                      </div>
+                <div key={s.idservicio}
+                  className={`flex overflow-hidden rounded-2xl border-2 transition-all ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
+                  {/* Imagen izquierda */}
+                  <div className="relative h-auto w-2/5 shrink-0 bg-muted">
+                    {s.imagen_url
+                      ? <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
+                      : <div className="flex h-full w-full items-center justify-center"><Scissors className="h-8 w-8 text-muted-foreground/40" /></div>
+                    }
+                  </div>
+                  {/* Contenido derecho */}
+                  <div className="flex flex-1 flex-col justify-between p-4">
+                    <div>
+                      <h3 className="text-base font-bold leading-tight">{s.nombre_servicio}</h3>
+                      {s.descripcion && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{s.descripcion}</p>}
+                      <span className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />{s.duracion_minutos} min
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <p className="text-lg font-bold text-primary">${Number(s.precio).toLocaleString('es-AR')}</p>
+                      <button onClick={() => setSelectedServicio(s.idservicio)}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${selectedServicio === s.idservicio ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground'}`}>
+                        {selectedServicio === s.idservicio ? '✓ Seleccionado' : 'Agregar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
             <div className="mt-6 flex justify-end">
