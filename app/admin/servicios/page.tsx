@@ -163,47 +163,51 @@ export default function ServiciosPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtrados.map(s => (
-              <Card key={s.idservicio} className={s.estado === 'inactivo' ? 'opacity-60' : ''}>
-                {s.imagen_url && (
-                  <div className="aspect-[4/3] w-full overflow-hidden rounded-t-lg">
-                    <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-contain" />
-                  </div>
-                )}
-                <CardHeader className="flex flex-row items-start justify-between pb-2">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base">{s.nombre_servicio}</CardTitle>
-                    {s.descripcion && <CardDescription className="line-clamp-2">{s.descripcion}</CardDescription>}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8 shrink-0">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => abrirEditar(s)}>
-                        <Pencil className="mr-2 size-4" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleEstado(s)}>
-                        <Power className="mr-2 size-4" /> {s.estado === 'activo' ? 'Desactivar' : 'Activar'}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="size-4" /> {s.duracion_minutos} min
-                      </span>
-                      <span className="font-semibold text-primary">{fmt(Number(s.precio))}</span>
+              <div key={s.idservicio}
+                className={`flex overflow-hidden rounded-2xl border transition-colors ${s.estado === 'inactivo' ? 'opacity-60' : ''}`}>
+                {/* Imagen izquierda */}
+                <div className="relative w-2/5 shrink-0 bg-muted">
+                  {s.imagen_url
+                    ? <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
+                    : <div className="flex h-full w-full items-center justify-center"><Package className="size-8 text-muted-foreground/30" /></div>
+                  }
+                </div>
+                {/* Contenido derecho */}
+                <div className="flex flex-1 flex-col justify-between p-3">
+                  <div className="flex items-start justify-between gap-1">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold leading-tight">{s.nombre_servicio}</p>
+                      {s.descripcion && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{s.descripcion}</p>}
                     </div>
-                    <Badge variant={s.estado === 'activo' ? 'default' : 'secondary'}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-7 shrink-0">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => abrirEditar(s)}>
+                          <Pencil className="mr-2 size-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toggleEstado(s)}>
+                          <Power className="mr-2 size-4" /> {s.estado === 'activo' ? 'Desactivar' : 'Activar'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-1">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-primary">{fmt(Number(s.precio))}</span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="size-3" /> {s.duracion_minutos} min
+                      </span>
+                    </div>
+                    <Badge variant={s.estado === 'activo' ? 'default' : 'secondary'} className="text-xs">
                       {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
                     </Badge>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
