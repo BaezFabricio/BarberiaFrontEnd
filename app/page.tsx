@@ -290,12 +290,14 @@ export default function ReservasPublicas() {
 
         {/* Step 1: Servicio */}
         {step === 1 && (
-          <div id="seleccion-servicio" className="mx-auto max-w-2xl scroll-mt-24">
+          <div id="seleccion-servicio" className="mx-auto max-w-2xl scroll-mt-24"
+            onClick={() => setSelectedServicio(null)}>
             <h2 className="mb-6 text-xl font-semibold">Selecciona un servicio</h2>
             <div className="grid gap-4">
               {barberia.servicios.map(s => (
                 <div key={s.idservicio}
-                  className={`flex overflow-hidden rounded-2xl border-2 transition-all ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
+                  onClick={e => { e.stopPropagation(); setSelectedServicio(s.idservicio); }}
+                  className={`flex cursor-pointer overflow-hidden rounded-2xl border-2 transition-all ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
                   {/* Imagen izquierda */}
                   <div className="relative h-auto w-2/5 shrink-0 bg-muted">
                     {s.imagen_url
@@ -312,12 +314,8 @@ export default function ReservasPublicas() {
                         <Clock className="h-3 w-3" />{s.duracion_minutos} min
                       </span>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-2">
+                    <div className="mt-3">
                       <p className="text-lg font-bold text-primary">${Number(s.precio).toLocaleString('es-AR')}</p>
-                      <button onClick={() => setSelectedServicio(s.idservicio)}
-                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${selectedServicio === s.idservicio ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground'}`}>
-                        {selectedServicio === s.idservicio ? '✓ Seleccionado' : 'Agregar'}
-                      </button>
                     </div>
                   </div>
                 </div>
