@@ -297,9 +297,9 @@ export default function ReservasPublicas() {
               {barberia.servicios.map(s => (
                 <div key={s.idservicio}
                   onClick={e => { e.stopPropagation(); setSelectedServicio(s.idservicio); }}
-                  className={`flex cursor-pointer overflow-hidden rounded-2xl border-2 transition-all ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
+                  className={`flex h-36 cursor-pointer overflow-hidden rounded-2xl border-2 transition-all ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
                   {/* Imagen izquierda */}
-                  <div className="relative h-auto w-2/5 shrink-0 bg-muted">
+                  <div className="relative w-2/5 shrink-0 bg-muted">
                     {s.imagen_url
                       ? <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
                       : <div className="flex h-full w-full items-center justify-center"><Scissors className="h-8 w-8 text-muted-foreground/40" /></div>
