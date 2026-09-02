@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Settings, LogOut, User } from 'lucide-react'
+import { Settings, LogOut, User, Globe } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -49,6 +49,9 @@ export function BarberoLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href="/"><Globe className="mr-2 size-4" />Ver sitio web</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/barbero/perfil"><User className="mr-2 size-4" />Mi Perfil</Link>
             </DropdownMenuItem>

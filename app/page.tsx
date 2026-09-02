@@ -2,23 +2,52 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Calendar, Clock, MapPin, Phone, Camera, MessageCircle, Check, ChevronRight, ChevronLeft, Scissors, Star, Loader2, AlertCircle } from 'lucide-react'
+import {
+  Calendar, Clock, MapPin, Phone, MessageCircle,
+  Check, ChevronRight, Scissors, Star, Loader2, AlertCircle,
+  ChevronDown
+} from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3000'
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3000'
+
+function IconInstagram({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+function IconFacebook({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </svg>
+  )
+}
+
+function IconWhatsApp({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+    </svg>
+  )
+}
+
 function getSubdominio(): string | null {
+  if (process.env.NEXT_PUBLIC_SINGLE_TENANT === 'true') return null
   if (typeof window === 'undefined') return null
-  // Subdominio real (dominio propio con wildcard)
   const parts = window.location.hostname.split('.')
   if (parts.length >= 3 && !parts.slice(-2).join('.').match(/vercel\.app|localhost/)) return parts[0]
-  // Fallback: parámetro ?b=subdominio en la URL
   const params = new URLSearchParams(window.location.search)
   const b = params.get('b')
   if (b) return b
@@ -39,32 +68,24 @@ type BarberiaPub = {
   telefono?: string | null; direccion?: string | null; correo_negocio?: string | null
   horario_lv_desde?: string; horario_lv_hasta?: string; horario_sab_desde?: string; horario_sab_hasta?: string; domingo_cerrado?: boolean
   instagram?: string | null; facebook?: string | null; whatsapp_negocio?: string | null
-  reservas_online?: boolean
-  slogan?: string | null
-  color_portada?: string | null
-  color_nombre_1?: string | null
-  color_nombre_2?: string | null
-  texto_portada_1?: string | null
-  texto_portada_2?: string | null
-  color_header_1?: string | null
-  color_header_2?: string | null
-  fuente_header?: string | null
+  reservas_online?: boolean; slogan?: string | null
+  color_portada?: string | null; color_nombre_1?: string | null; color_nombre_2?: string | null
+  texto_portada_1?: string | null; texto_portada_2?: string | null
+  color_header_1?: string | null; color_header_2?: string | null; fuente_header?: string | null
   maps_embed?: string | null
   servicios: Servicio[]; barberos: Barbero[]
 }
 
-const FALLBACK_IMAGES = [
-  { url: "/images/barberia-1.jpg" },
-  { url: "/images/barberia-2.jpg" },
-  { url: "/images/barberia-3.jpg" },
-]
+const FALLBACK_IMAGES = [{ url: "/images/barberia-1.jpg" }, { url: "/images/barberia-2.jpg" }, { url: "/images/barberia-3.jpg" }]
+const FONT_MAP: Record<string, string> = { 'Cinzel': 'cinzel', 'Playfair Display': 'playfair', 'Oswald': 'oswald', 'Bebas Neue': 'bebas', 'Abril Fatface': 'abril' }
 
-
-export default function ReservasPublicas() {
+export default function Landing() {
   const router = useRouter()
+  const reservaRef = useRef<HTMLDivElement>(null)
+
   const [step, setStep] = useState(1)
-  const [logoAvailable, setLogoAvailable] = useState(true)
   const [carouselImages, setCarouselImages] = useState<{ url: string }[]>([])
+  const [carouselIdx, setCarouselIdx] = useState(0)
   const [subdominio, setSubdominio] = useState<string | null>(null)
   const [barberia, setBarberia] = useState<BarberiaPub | null>(null)
   const [loadingBarberia, setLoadingBarberia] = useState(true)
@@ -84,70 +105,63 @@ export default function ReservasPublicas() {
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [reservaConfirmada, setReservaConfirmada] = useState<{ fecha: string; hora_inicio: string; servicio: string; barbero?: string; precio?: number; nombre?: string } | null>(null)
 
-  // Cargar datos de la barbería al montar
+  // Carousel auto-advance
+  useEffect(() => {
+    if (carouselImages.length <= 1) return
+    const t = setInterval(() => setCarouselIdx(i => (i + 1) % carouselImages.length), 5000)
+    return () => clearInterval(t)
+  }, [carouselImages.length])
+
   useEffect(() => {
     aplicarColorGuardado()
     const sub = getSubdominio()
     setSubdominio(sub)
-    if (!sub) { router.push('/login'); return }
+    if (!sub && process.env.NEXT_PUBLIC_SINGLE_TENANT !== 'true') { router.push('/login'); return }
 
-    publicFetch<BarberiaPub>(`/barberia?subdominio=${sub}`)
+    const qb = sub ? `/barberia?subdominio=${sub}` : '/barberia'
+    publicFetch<BarberiaPub>(qb)
       .then(data => { setBarberia(data); setLoadingBarberia(false); if (data.color_primario) aplicarColor(data.color_primario, true) })
       .catch(err => { setErrorBarberia(err.message); setLoadingBarberia(false) })
-    publicFetch<{ idimagen: number; url: string }[]>(`/carrusel?subdominio=${sub}`)
-      .then(imgs => { setCarouselImages(imgs.length > 0 ? imgs : FALLBACK_IMAGES) })
-      .catch(() => { setCarouselImages(FALLBACK_IMAGES) })
+
+    const qc = sub ? `/carrusel?subdominio=${sub}` : '/carrusel'
+    publicFetch<{ idimagen: number; url: string }[]>(qc)
+      .then(imgs => setCarouselImages(imgs.length > 0 ? imgs : FALLBACK_IMAGES))
+      .catch(() => setCarouselImages(FALLBACK_IMAGES))
   }, [])
 
-
-
-  // Cargar slots cuando cambian barbero, fecha o servicio
   useEffect(() => {
-    if (!selectedBarbero || !selectedFecha || !selectedServicio || !subdominio) return
-    setLoadingSlots(true)
-    setSelectedHora(null)
-    setSlots([])
-    setSinHorarios(false)
+    if (!selectedBarbero || !selectedFecha || !selectedServicio) return
+    setLoadingSlots(true); setSelectedHora(null); setSlots([]); setSinHorarios(false)
+    const subParam = subdominio ? `subdominio=${subdominio}&` : ''
     publicFetch<{ slots: string[]; sin_horarios?: boolean }>(
-      `/disponibilidad?subdominio=${subdominio}&barbero_id=${selectedBarbero}&fecha=${selectedFecha}&idservicio=${selectedServicio}`
+      `/disponibilidad?${subParam}barbero_id=${selectedBarbero}&fecha=${selectedFecha}&idservicio=${selectedServicio}`
     )
       .then(d => { setSlots(d.slots); setSinHorarios(d.slots.length === 0); setLoadingSlots(false) })
       .catch(() => { setSlots([]); setSinHorarios(false); setLoadingSlots(false) })
   }, [selectedBarbero, selectedFecha, selectedServicio, subdominio])
 
   const handleConfirmarReserva = async () => {
-    if (!subdominio || !selectedServicio || !selectedBarbero || !selectedFecha || !selectedHora) return
-    setEnviando(true)
-    setErrorReserva('')
+    if (!selectedServicio || !selectedBarbero || !selectedFecha || !selectedHora) return
+    setEnviando(true); setErrorReserva('')
     try {
       const res = await fetch(`${BACKEND_URL}/api/public/reserva`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subdominio,
-          idservicio: selectedServicio,
-          idusuario_barbero: selectedBarbero,
-          fecha: selectedFecha,
-          hora_inicio: selectedHora,
-          nombre_cliente: clienteData.nombre,
-          telefono_cliente: clienteData.telefono,
+          ...(subdominio ? { subdominio } : {}),
+          idservicio: selectedServicio, idusuario_barbero: selectedBarbero,
+          fecha: selectedFecha, hora_inicio: selectedHora,
+          nombre_cliente: clienteData.nombre, telefono_cliente: clienteData.telefono,
           correo_electronico: clienteData.email || undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error al reservar')
-      setReservaConfirmada({
-        ...data,
-        barbero: barberoSeleccionado?.nombre_completo,
-        precio: servicioSeleccionado?.precio,
-        nombre: clienteData.nombre,
-      })
+      setReservaConfirmada({ ...data, barbero: barberoSeleccionado?.nombre_completo, precio: servicioSeleccionado?.precio, nombre: clienteData.nombre })
       setShowConfirmation(true)
     } catch (err: unknown) {
       setErrorReserva(err instanceof Error ? err.message : 'Error al reservar')
-    } finally {
-      setEnviando(false)
-    }
+    } finally { setEnviando(false) }
   }
 
   const resetReserva = () => {
@@ -159,16 +173,15 @@ export default function ReservasPublicas() {
 
   const fechasDisponibles = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() + i)
-    return {
-      value: d.toISOString().split('T')[0],
-      label: d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }),
-      dayName: d.toLocaleDateString('es-AR', { weekday: 'long' }),
-    }
+    return { value: d.toISOString().split('T')[0], label: d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }), dayName: d.toLocaleDateString('es-AR', { weekday: 'long' }) }
   }).filter(d => d.dayName !== 'domingo')
 
   const servicioSeleccionado = barberia?.servicios.find(s => s.idservicio === selectedServicio)
   const barberoSeleccionado = barberia?.barberos.find(b => b.idusuario === selectedBarbero)
   const nombreBarberia = barberia?.nombre_negocio ?? 'Barbería'
+  const headerFont = barberia?.fuente_header && barberia.fuente_header !== 'inherit'
+    ? `var(--font-${FONT_MAP[barberia.fuente_header] ?? 'cinzel'}), serif`
+    : undefined
 
   if (loadingBarberia) {
     return (
@@ -217,431 +230,575 @@ export default function ReservasPublicas() {
     )
   }
 
+  const heroBg = carouselImages[carouselIdx]?.url
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+
+      {/* ── HEADER ── */}
+      <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/60 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="flex h-10 shrink-0 items-center justify-center">
-              {barberia?.logo_url ? (
-                <img src={barberia.logo_url} alt={nombreBarberia} className="h-10 w-auto max-w-[120px] object-contain" />
-              ) : (
-                <Scissors className="h-5 w-5 text-primary" />
-              )}
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="font-semibold leading-tight truncate" style={{ fontFamily: barberia?.fuente_header && barberia.fuente_header !== 'inherit' ? `var(--font-${({'Cinzel':'cinzel','Playfair Display':'playfair','Oswald':'oswald','Bebas Neue':'bebas','Abril Fatface':'abril'} as Record<string,string>)[barberia.fuente_header] ?? 'cinzel'}), serif` : undefined }}>
-                {nombreBarberia.split(' ').map((p, i) => (
-                  <span key={i} style={{ color: i === 0 ? (barberia?.color_header_1 ?? undefined) : (barberia?.color_header_2 ?? barberia?.color_header_1 ?? undefined) }}>
-                    {i > 0 ? ' ' : ''}{p}
-                  </span>
-                ))}
-              </span>
-              {barberia?.slogan && (
-                <span className="text-xs text-muted-foreground italic truncate">{barberia.slogan}</span>
-              )}
-            </div>
+          <div className="flex items-center gap-3 min-w-0">
+            {barberia.logo_url && (
+              <img src={barberia.logo_url} alt={nombreBarberia} className="h-9 w-auto max-w-[44px] object-contain" />
+            )}
+            <span className="font-bold text-lg leading-tight truncate text-white" style={{ fontFamily: headerFont }}>
+              {nombreBarberia.split(' ').map((p, i) => (
+                <span key={i} style={{ color: i === 0 ? (barberia.color_header_1 ?? 'white') : (barberia.color_header_2 ?? barberia.color_header_1 ?? 'white') }}>
+                  {i > 0 ? ' ' : ''}{p}
+                </span>
+              ))}
+            </span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <nav className="hidden md:flex items-center gap-6 text-sm text-white/70">
+              <a href="#servicios" className="hover:text-white transition-colors">Servicios</a>
+              <a href="#equipo" className="hover:text-white transition-colors">Equipo</a>
+              <a href="#reserva" className="hover:text-white transition-colors">Reservar</a>
+            </nav>
+            <ThemeToggle />
+            <Button size="sm" onClick={() => reservaRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              className="hidden sm:inline-flex">
+              Reservar turno
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Portada + botón */}
-      <section className="bg-[#0a0a0a] flex flex-col items-center gap-5 py-8 px-4 border-b border-border" style={{ boxShadow: '0 4px 24px 0 rgba(0,0,0,0.18)' }}>
-        {carouselImages[0] && (
-          <img src={carouselImages[0].url} alt="" className="max-h-36 w-auto max-w-xs object-contain" />
-        )}
-        <a href="#seleccion-servicio"
-          className="rounded-2xl px-8 py-4 text-lg font-semibold transition-all duration-200 hover:-translate-y-0.5"
-          style={{
-            border: '1px solid rgba(var(--primary-rgb),0.55)',
-            background: 'linear-gradient(to bottom, rgba(var(--primary-rgb),0.12), rgba(var(--primary-rgb),0.06))',
-            boxShadow: '0 0 0 1px rgba(var(--primary-rgb),0.2), 0 16px 40px rgba(var(--primary-rgb),0.18)',
-            color: 'var(--primary)',
-          }}>
-          Reserva tu turno
-        </a>
+      {/* ── HERO ── */}
+      <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden bg-[#0a0a0a]">
+        {/* Background image carousel */}
+        {carouselImages.map((img, idx) => (
+          <div key={img.url} className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: idx === carouselIdx ? 1 : 0 }}>
+            <img src={img.url} alt="" className="h-full w-full object-cover" />
+          </div>
+        ))}
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center gap-6 px-4 text-center">
+          {barberia.logo_url && (
+            <img src={barberia.logo_url} alt={nombreBarberia} className="h-20 w-auto max-w-[80px] object-contain drop-shadow-2xl" />
+          )}
+          <div>
+            <h1 className="text-5xl font-black leading-none tracking-tight text-white sm:text-7xl" style={{ fontFamily: headerFont }}>
+              {nombreBarberia.split(' ').map((p, i) => (
+                <span key={i} style={{ color: i === 0 ? (barberia.color_header_1 ?? 'white') : (barberia.color_header_2 ?? barberia.color_header_1 ?? 'white') }}>
+                  {i > 0 ? ' ' : ''}{p}
+                </span>
+              ))}
+            </h1>
+            {barberia.slogan && (
+              <p className="mt-3 text-lg text-white/70 italic">{barberia.slogan}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            <button
+              onClick={() => reservaRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              className="rounded-xl px-8 py-4 text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+              style={{
+                background: 'var(--primary)',
+                color: 'var(--primary-foreground)',
+                boxShadow: '0 8px 32px rgba(var(--primary-rgb),0.4)',
+              }}>
+              Reservar turno
+            </button>
+            {barberia.whatsapp_negocio && (
+              <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-4 text-base font-medium text-white backdrop-blur-sm transition-all hover:bg-white/20">
+                <MessageCircle className="size-4" /> WhatsApp
+              </a>
+            )}
+          </div>
+
+          {/* Indicadores carousel */}
+          {carouselImages.length > 1 && (
+            <div className="flex gap-1.5">
+              {carouselImages.map((_, i) => (
+                <button key={i} onClick={() => setCarouselIdx(i)}
+                  className={`h-1.5 rounded-full transition-all ${i === carouselIdx ? 'w-6 bg-white' : 'w-1.5 bg-white/40'}`} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Scroll hint */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce text-white/50">
+          <ChevronDown className="size-6" />
+        </div>
       </section>
 
-      {/* Progress Steps */}
-      <div className="border-b border-border bg-card/50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3, 4].map(s => (
-              <div key={s} className="flex items-center">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${step >= s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                  {step > s ? <Check className="h-4 w-4" /> : s}
+      {/* ── VENTAJAS ── */}
+      <section className="border-b border-border bg-card/40 py-10">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {[
+              { icon: Calendar, title: 'Reserva online', desc: 'Sacá tu turno en menos de 2 minutos, sin llamadas.' },
+              { icon: Clock, title: 'Sin esperas', desc: 'Tu turno confirmado, llegás y te atendemos.' },
+              { icon: Star, title: 'Calidad garantizada', desc: 'Barberos profesionales con años de experiencia.' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-4 rounded-xl p-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Icon className="size-5 text-primary" />
                 </div>
-                {s < 4 && <div className={`mx-2 h-0.5 w-8 transition-colors sm:w-12 ${step > s ? 'bg-primary' : 'bg-muted'}`} />}
+                <div>
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{desc}</p>
+                </div>
               </div>
-            ))}
-          </div>
-          <div className="mt-2 flex justify-center gap-4 text-xs text-muted-foreground sm:gap-8">
-            {['Servicio', 'Barbero', 'Fecha', 'Datos'].map((label, i) => (
-              <span key={label} className={step >= i + 1 ? 'text-primary' : ''}>{label}</span>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-
-        {/* Step 1: Servicio */}
-        {step === 1 && (
-          <div id="seleccion-servicio" className="mx-auto max-w-2xl scroll-mt-24"
-            onClick={() => setSelectedServicio(null)}>
-            <h2 className="mb-6 text-xl font-semibold">Selecciona un servicio</h2>
-            <div className="grid gap-4">
+      {/* ── SERVICIOS ── */}
+      {barberia.servicios.length > 0 && (
+        <section id="servicios" className="py-16 scroll-mt-16">
+          <div className="container mx-auto px-4">
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-black tracking-tight">Nuestros servicios</h2>
+              <p className="mt-2 text-muted-foreground">Todo lo que necesitás para verte impecable</p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
               {barberia.servicios.map(s => (
                 <div key={s.idservicio}
-                  onClick={e => { e.stopPropagation(); setSelectedServicio(s.idservicio); }}
-                  className={`flex h-36 cursor-pointer overflow-hidden rounded-2xl border-2 transition-all ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
-                  {/* Imagen izquierda */}
-                  <div className="relative w-2/5 shrink-0 bg-muted">
+                  className="group overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl hover:border-primary/40">
+                  <div className="relative h-44 w-full bg-muted overflow-hidden">
                     {s.imagen_url
-                      ? <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
-                      : <div className="flex h-full w-full items-center justify-center"><Scissors className="h-8 w-8 text-muted-foreground/40" /></div>
+                      ? <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      : <div className="flex h-full items-center justify-center"><Scissors className="size-10 text-muted-foreground/30" /></div>
                     }
-                  </div>
-                  {/* Contenido derecho */}
-                  <div className="flex flex-1 flex-col justify-between p-4">
-                    <div>
-                      <h3 className="text-base font-bold leading-tight">{s.nombre_servicio}</h3>
-                      {s.descripcion && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{s.descripcion}</p>}
-                      <span className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />{s.duracion_minutos} min
-                      </span>
+                    <div className="absolute bottom-3 right-3 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      {s.duracion_minutos} min
                     </div>
-                    <div className="mt-3">
-                      <p className="text-lg font-bold text-primary">${Number(s.precio).toLocaleString('es-AR')}</p>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-bold text-base">{s.nombre_servicio}</h3>
+                    {s.descripcion && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{s.descripcion}</p>}
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xl font-black text-primary">${Number(s.precio).toLocaleString('es-AR')}</span>
+                      <button
+                        onClick={() => {
+                          setSelectedServicio(s.idservicio)
+                          setSelectedBarbero(null)
+                          setSelectedFecha('')
+                          setSelectedHora(null)
+                          setSlots([])
+                          setErrorReserva('')
+                          setStep(2)
+                          setTimeout(() => reservaRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+                        }}
+                        className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
+                        Reservar
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!selectedServicio} className="w-full sm:w-auto">
-                Continuar <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Step 2: Barbero */}
-        {step === 2 && (
-          <div className="mx-auto max-w-2xl">
-            <h2 className="mb-6 text-xl font-semibold">Selecciona tu barbero</h2>
-            <div className="grid gap-3">
-              {barberia.barberos.map(b => (
-                <Card key={b.idusuario} onClick={() => setSelectedBarbero(b.idusuario)}
-                  className={`cursor-pointer border-2 transition-all hover:border-primary hover:bg-primary/5 ${selectedBarbero === b.idusuario ? 'border-primary ring-4 ring-primary/30 bg-primary/5' : 'border-transparent'}`}>
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xl font-bold text-primary">
+      {/* ── EQUIPO ── */}
+      {barberia.barberos.length > 0 && (
+        <section id="equipo" className="py-16 bg-card/30 scroll-mt-16">
+          <div className="container mx-auto px-4">
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-black tracking-tight">Nuestro equipo</h2>
+              <p className="mt-2 text-muted-foreground">Profesionales apasionados por su oficio</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6 max-w-4xl mx-auto">
+              {barberia.barberos.map(b => {
+                const initials = b.nombre_completo.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                return (
+                  <div key={b.idusuario} className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center w-44 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
+                    <div className="relative size-20 overflow-hidden rounded-full border-2 border-primary/30 bg-primary/10">
                       {b.foto_url
-                        ? <img src={b.foto_url} alt={b.nombre_completo} className="h-14 w-14 object-cover" />
-                        : b.nombre_completo.split(' ').map((n: string) => n[0]).join('').slice(0, 2)
+                        ? <img src={b.foto_url} alt={b.nombre_completo} className="h-full w-full object-cover" />
+                        : <div className="flex h-full items-center justify-center text-xl font-bold text-primary">{initials}</div>
                       }
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium">{b.nombre_completo}</h3>
-                      {b.especialidades && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {b.especialidades.split(',').map((e: string) => e.trim()).filter(Boolean).map((esp: string) => (
-                            <span key={esp} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{esp}</span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
-                        <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                        <span>{Number(b.rating_promedio).toFixed(1)}</span>
+                    <div>
+                      <h3 className="font-bold text-sm leading-tight">{b.nombre_completo}</h3>
+                      <div className="mt-1 flex items-center justify-center gap-1">
+                        <Star className="size-3 fill-primary text-primary" />
+                        <span className="text-xs text-muted-foreground">{Number(b.rating_promedio).toFixed(1)}</span>
                       </div>
+                      {b.especialidades && (
+                        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{b.especialidades}</p>
+                      )}
                     </div>
-                    {selectedBarbero === b.idusuario && <Check className="h-5 w-5 text-primary" />}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1 sm:flex-none">Atrás</Button>
-              <Button onClick={() => setStep(3)} disabled={!selectedBarbero} className="flex-1 sm:flex-none sm:ml-auto">
-                Continuar <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
+                  </div>
+                )
+              })}
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Step 3: Fecha y Hora */}
-        {step === 3 && (
+      {/* ── RESERVA ── */}
+      <section id="reserva" ref={reservaRef} className="py-16 scroll-mt-16">
+        <div className="container mx-auto px-4">
+          <div className="mb-10 text-center">
+            <h2 className="text-3xl font-black tracking-tight">Reservar turno</h2>
+            <p className="mt-2 text-muted-foreground">Elegí servicio, barbero y horario en segundos</p>
+          </div>
+
+          {/* Steps indicator */}
+          <div className="mb-10 flex items-center justify-center gap-2">
+            {['Servicio', 'Barbero', 'Fecha y hora', 'Tus datos'].map((label, i) => {
+              const s = i + 1
+              return (
+                <div key={s} className="flex items-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`flex size-8 items-center justify-center rounded-full text-sm font-bold transition-all ${step > s ? 'bg-primary text-primary-foreground' : step === s ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' : 'bg-muted text-muted-foreground'}`}>
+                      {step > s ? <Check className="size-4" /> : s}
+                    </div>
+                    <span className={`hidden sm:block text-xs font-medium ${step >= s ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
+                  </div>
+                  {s < 4 && <div className={`mx-2 mb-4 h-0.5 w-8 sm:w-16 transition-colors ${step > s ? 'bg-primary' : 'bg-muted'}`} />}
+                </div>
+              )
+            })}
+          </div>
+
           <div className="mx-auto max-w-2xl">
-            <h2 className="mb-6 text-xl font-semibold">Selecciona fecha y hora</h2>
-            <div className="mb-6">
-              <Label className="mb-3 block text-sm font-medium">Fecha</Label>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {fechasDisponibles.map(f => (
-                  <button key={f.value} onClick={() => setSelectedFecha(f.value)}
-                    className={`flex min-w-[80px] flex-col items-center rounded-lg border p-3 transition-all ${selectedFecha === f.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary'}`}>
-                    <span className="text-xs uppercase">{f.label.split(' ')[0]}</span>
-                    <span className="text-lg font-bold">{f.label.split(' ')[1]}</span>
-                    <span className="text-xs">{f.label.split(' ')[2]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {selectedFecha && (
-              <div>
-                <Label className="mb-3 block text-sm font-medium">Horario disponible</Label>
-                {loadingSlots ? (
-                  <div className="flex items-center gap-2 py-6 text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" /> Cargando horarios...
-                  </div>
-                ) : slots.length === 0 ? (
-                  <div className="py-6 space-y-1">
-                    <p className="text-muted-foreground font-medium">
-                      {sinHorarios ? 'Este barbero no trabaja este día.' : 'No hay turnos disponibles para este día.'}
-                    </p>
-                    <p className="text-sm text-muted-foreground/70">
-                      {sinHorarios ? 'Probá eligiendo otro día u otro barbero.' : 'Todos los horarios están ocupados. Probá con otra fecha.'}
-                    </p>
-                  </div>
+            {/* Step 1 */}
+            {step === 1 && (
+              <div className="space-y-4">
+                {barberia.servicios.length === 0 ? (
+                  <p className="py-10 text-center text-muted-foreground">No hay servicios disponibles por el momento.</p>
                 ) : (
-                  <div className="space-y-4">
-                    {[
-                      { label: ' Mañana', desde: 0,  hasta: 12 },
-                      { label: ' Tarde',  desde: 12, hasta: 18 },
-                      { label: ' Noche',  desde: 18, hasta: 24 },
-                    ].map(({ label, desde, hasta }) => {
-                      const grupo = slots.filter(h => { const hr = Number(h.split(':')[0]); return hr >= desde && hr < hasta })
-                      if (grupo.length === 0) return null
-                      return (
-                        <div key={label}>
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-                          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                            {grupo.map(hora => (
-                              <button key={hora} onClick={() => setSelectedHora(hora)}
-                                className={`rounded-lg border p-3 text-sm font-medium transition-all ${selectedHora === hora ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary'}`}>
-                                {hora}
-                              </button>
-                            ))}
+                  <>
+                    <div className="grid gap-3">
+                      {barberia.servicios.map(s => (
+                        <div key={s.idservicio} onClick={() => setSelectedServicio(s.idservicio)}
+                          className={`flex cursor-pointer overflow-hidden rounded-2xl border-2 transition-all h-28 ${selectedServicio === s.idservicio ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)] bg-primary/5' : 'border-border hover:border-primary/50 bg-card'}`}>
+                          <div className="relative w-28 shrink-0 bg-muted">
+                            {s.imagen_url
+                              ? <img src={s.imagen_url} alt={s.nombre_servicio} className="h-full w-full object-cover" />
+                              : <div className="flex h-full items-center justify-center"><Scissors className="size-7 text-muted-foreground/30" /></div>
+                            }
+                          </div>
+                          <div className="flex flex-1 items-center justify-between p-4">
+                            <div>
+                              <h3 className="font-bold">{s.nombre_servicio}</h3>
+                              <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{s.duracion_minutos} min</p>
+                              {s.descripcion && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{s.descripcion}</p>}
+                            </div>
+                            <div className="shrink-0 pl-4 text-right">
+                              <p className="text-lg font-black text-primary">${Number(s.precio).toLocaleString('es-AR')}</p>
+                              {selectedServicio === s.idservicio && <Check className="ml-auto mt-1 size-4 text-primary" />}
+                            </div>
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={() => setStep(2)} disabled={!selectedServicio} size="lg">
+                        Continuar <ChevronRight className="ml-1 size-4" />
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
             )}
 
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" onClick={() => setStep(2)} className="flex-1 sm:flex-none">Atrás</Button>
-              <Button onClick={() => setStep(4)} disabled={!selectedFecha || !selectedHora} className="flex-1 sm:flex-none sm:ml-auto">
-                Continuar <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Datos del cliente */}
-        {step === 4 && (
-          <div className="mx-auto max-w-2xl">
-            <h2 className="mb-6 text-xl font-semibold">Completa tus datos</h2>
-
-            {/* Resumen */}
-            <Card className="mb-6">
-              <CardContent className="grid gap-2 p-4 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Servicio:</span><span className="font-medium">{servicioSeleccionado?.nombre_servicio}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Barbero:</span><span className="font-medium">{barberoSeleccionado?.nombre_completo}</span></div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Fecha:</span>
-                  <span className="font-medium">{selectedFecha && new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            {/* Step 2 */}
+            {step === 2 && (
+              <div className="space-y-4">
+                {servicioSeleccionado && (
+                  <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                    <span className="text-muted-foreground">Servicio seleccionado:</span>
+                    <div className="flex items-center gap-3 font-semibold">
+                      {servicioSeleccionado.nombre_servicio}
+                      <button onClick={() => setStep(1)} className="text-xs text-primary underline underline-offset-2">cambiar</button>
+                    </div>
+                  </div>
+                )}
+                <div className="grid gap-3">
+                  {barberia.barberos.map(b => (
+                    <Card key={b.idusuario} onClick={() => setSelectedBarbero(b.idusuario)}
+                      className={`cursor-pointer border-2 transition-all ${selectedBarbero === b.idusuario ? 'border-primary bg-primary/5 shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]' : 'border-border hover:border-primary/50'}`}>
+                      <CardContent className="flex items-center gap-4 p-4">
+                        <div className="size-14 shrink-0 overflow-hidden rounded-full border-2 border-primary/20 bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+                          {b.foto_url
+                            ? <img src={b.foto_url} alt={b.nombre_completo} className="size-14 object-cover" />
+                            : b.nombre_completo.split(' ').map(n => n[0]).join('').slice(0, 2)
+                          }
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold">{b.nombre_completo}</h3>
+                          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Star className="size-3.5 fill-primary text-primary" />
+                            <span>{Number(b.rating_promedio).toFixed(1)}</span>
+                          </div>
+                          {b.especialidades && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {b.especialidades.split(',').map(e => e.trim()).filter(Boolean).map(esp => (
+                                <span key={esp} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{esp}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {selectedBarbero === b.idusuario && <Check className="size-5 shrink-0 text-primary" />}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Hora:</span><span className="font-medium">{selectedHora} hs</span></div>
-                <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Precio:</span><span className="font-bold text-primary">${Number(servicioSeleccionado?.precio ?? 0).toLocaleString('es-AR')}</span></div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="nombre">Nombre *</Label>
-                <Input id="nombre" placeholder="Ej: Juan Perez" value={clienteData.nombre}
-                  onChange={e => setClienteData(p => ({ ...p, nombre: e.target.value }))} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="telefono">Teléfono *</Label>
-                <Input id="telefono" placeholder="+54 11 1234-5678" value={clienteData.telefono}
-                  onChange={e => setClienteData(p => ({ ...p, telefono: e.target.value }))} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="email">Email (opcional)</Label>
-                <Input id="email" type="email" placeholder="tu@email.com" value={clienteData.email}
-                  onChange={e => setClienteData(p => ({ ...p, email: e.target.value }))} className="mt-1.5" />
-              </div>
-            </div>
-
-            {errorReserva && (
-              <div className="mt-4 flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="size-4 shrink-0" />{errorReserva}
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={() => setStep(1)}>Atrás</Button>
+                  <Button onClick={() => setStep(3)} disabled={!selectedBarbero} size="lg">
+                    Continuar <ChevronRight className="ml-1 size-4" />
+                  </Button>
+                </div>
               </div>
             )}
 
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" onClick={() => setStep(3)} className="flex-1 sm:flex-none">Atrás</Button>
-              <Button onClick={handleConfirmarReserva}
-                disabled={!clienteData.nombre || !clienteData.telefono || enviando}
-                className="flex-1 sm:flex-none sm:ml-auto">
-                {enviando ? <><Loader2 className="mr-2 size-4 animate-spin" />Reservando...</> : 'Confirmar Reserva'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-card/50 py-10 mt-12">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
-            {/* Nombre + redes */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-foreground text-lg">{barberia?.nombre_negocio}</h3>
-              {(barberia?.instagram || barberia?.facebook || barberia?.whatsapp_negocio) && (
-                <div className="flex gap-3">
-                  {barberia?.instagram && (
-                    <a href={`https://instagram.com/${barberia.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1">
-                      <Camera className="size-4" /> Instagram
-                    </a>
-                  )}
-                  {barberia?.facebook && (
-                    <a href={`https://facebook.com/${barberia.facebook}`} target="_blank" rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                      Facebook
-                    </a>
-                  )}
-                  {barberia?.whatsapp_negocio && (
-                    <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1">
-                      <MessageCircle className="size-4" /> WhatsApp
-                    </a>
-                  )}
+            {/* Step 3 */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <Label className="mb-3 block font-semibold">Elegí una fecha</Label>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {fechasDisponibles.map(f => (
+                      <button key={f.value} onClick={() => setSelectedFecha(f.value)}
+                        className={`flex min-w-[76px] flex-col items-center rounded-xl border p-3 transition-all ${selectedFecha === f.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary'}`}>
+                        <span className="text-xs uppercase font-medium">{f.label.split(' ')[0]}</span>
+                        <span className="text-xl font-black">{f.label.split(' ')[1]}</span>
+                        <span className="text-xs">{f.label.split(' ')[2]}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
+
+                {selectedFecha && (
+                  <div>
+                    <Label className="mb-3 block font-semibold">Elegí un horario</Label>
+                    {loadingSlots ? (
+                      <div className="flex items-center gap-2 py-6 text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Cargando horarios...</div>
+                    ) : slots.length === 0 ? (
+                      <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                        {sinHorarios ? 'Este barbero no trabaja este día. Probá con otro día u otro barbero.' : 'No hay turnos disponibles. Probá con otra fecha.'}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {[{ label: 'Mañana', desde: 0, hasta: 12 }, { label: 'Tarde', desde: 12, hasta: 18 }, { label: 'Noche', desde: 18, hasta: 24 }].map(({ label, desde, hasta }) => {
+                          const grupo = slots.filter(h => { const hr = Number(h.split(':')[0]); return hr >= desde && hr < hasta })
+                          if (!grupo.length) return null
+                          return (
+                            <div key={label}>
+                              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+                              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                                {grupo.map(hora => (
+                                  <button key={hora} onClick={() => setSelectedHora(hora)}
+                                    className={`rounded-xl border p-2.5 text-sm font-semibold transition-all ${selectedHora === hora ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary'}`}>
+                                    {hora}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={() => setStep(2)}>Atrás</Button>
+                  <Button onClick={() => setStep(4)} disabled={!selectedFecha || !selectedHora} size="lg">
+                    Continuar <ChevronRight className="ml-1 size-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4 */}
+            {step === 4 && (
+              <div className="space-y-6">
+                {/* Resumen */}
+                <div className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden">
+                  {[
+                    { label: 'Servicio', value: servicioSeleccionado?.nombre_servicio },
+                    { label: 'Barbero', value: barberoSeleccionado?.nombre_completo },
+                    { label: 'Fecha', value: selectedFecha && new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) },
+                    { label: 'Hora', value: selectedHora ? `${selectedHora} hs` : '' },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex justify-between px-4 py-3 text-sm">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-semibold capitalize">{value}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="text-lg font-black text-primary">${Number(servicioSeleccionado?.precio ?? 0).toLocaleString('es-AR')}</span>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="nombre">Nombre completo *</Label>
+                    <Input id="nombre" placeholder="Ej: Juan Pérez" value={clienteData.nombre}
+                      onChange={e => setClienteData(p => ({ ...p, nombre: e.target.value }))} className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label htmlFor="telefono">Teléfono *</Label>
+                    <Input id="telefono" placeholder="+54 11 1234-5678" value={clienteData.telefono}
+                      onChange={e => setClienteData(p => ({ ...p, telefono: e.target.value }))} className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                    <Input id="email" type="email" placeholder="tu@email.com" value={clienteData.email}
+                      onChange={e => setClienteData(p => ({ ...p, email: e.target.value }))} className="mt-1.5" />
+                  </div>
+                </div>
+
+                {errorReserva && (
+                  <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                    <AlertCircle className="size-4 shrink-0" />{errorReserva}
+                  </div>
+                )}
+
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={() => setStep(3)}>Atrás</Button>
+                  <Button size="lg" onClick={handleConfirmarReserva}
+                    disabled={!clienteData.nombre || !clienteData.telefono || enviando}>
+                    {enviando ? <><Loader2 className="mr-2 size-4 animate-spin" />Reservando...</> : 'Confirmar reserva'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="border-t border-border bg-card/60 pt-12 pb-6">
+        <div className="container mx-auto max-w-5xl px-4">
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-3 mb-10">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                {barberia.logo_url && <img src={barberia.logo_url} alt={nombreBarberia} className="h-8 w-auto max-w-[36px] object-contain" />}
+                <h3 className="font-black text-lg">{nombreBarberia}</h3>
+              </div>
+              {barberia.slogan && <p className="text-sm text-muted-foreground italic">{barberia.slogan}</p>}
+              <div className="flex gap-3">
+                {barberia.instagram && (
+                  <a href={`https://instagram.com/${barberia.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+                    <IconInstagram className="size-4" />
+                  </a>
+                )}
+                {barberia.facebook && (
+                  <a href={`https://facebook.com/${barberia.facebook}`} target="_blank" rel="noopener noreferrer"
+                    className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+                    <IconFacebook className="size-4" />
+                  </a>
+                )}
+                {barberia.whatsapp_negocio && (
+                  <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+                    <IconWhatsApp className="size-4" />
+                  </a>
+                )}
+              </div>
             </div>
 
-            {/* Contacto */}
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm text-foreground">Contacto</h4>
-              {barberia?.telefono && (
-                <a href={`tel:${barberia.telefono}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                  <Phone className="size-4 shrink-0" />{barberia.telefono}
+            <div className="space-y-3">
+              <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Contacto</h4>
+              {barberia.telefono && (
+                <a href={`tel:${barberia.telefono}`} className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                  <Phone className="size-4 shrink-0 text-primary" />{barberia.telefono}
                 </a>
               )}
-              {barberia?.direccion && (
+              {barberia.direccion && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="size-4 shrink-0" />{barberia.direccion}
+                  <MapPin className="size-4 shrink-0 text-primary" />{barberia.direccion}
                 </p>
               )}
             </div>
 
-            {/* Horarios */}
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm text-foreground">Horarios</h4>
+            <div className="space-y-3">
+              <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Horarios</h4>
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="size-4 shrink-0" />
-                Lun–Vie: {barberia?.horario_lv_desde ?? '09:00'} – {barberia?.horario_lv_hasta ?? '19:00'}
+                <Clock className="size-4 shrink-0 text-primary" />
+                Lun–Vie: {barberia.horario_lv_desde ?? '09:00'} – {barberia.horario_lv_hasta ?? '19:00'}
               </p>
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="size-4 shrink-0" />
-                Sábado: {barberia?.horario_sab_desde ?? '09:00'} – {barberia?.horario_sab_hasta ?? '15:00'}
+                <Clock className="size-4 shrink-0 text-primary" />
+                Sábado: {barberia.horario_sab_desde ?? '09:00'} – {barberia.horario_sab_hasta ?? '15:00'}
               </p>
               <p className="text-sm text-muted-foreground pl-6">
-                Domingo: {barberia?.domingo_cerrado ? 'Cerrado' : 'Abierto'}
+                Domingo: {barberia.domingo_cerrado ? 'Cerrado' : 'Abierto'}
               </p>
             </div>
           </div>
 
-          {barberia?.maps_embed && (
-            <div className="border-t border-border pt-6 mb-6">
-              <h4 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
-                <MapPin className="size-4" /> Cómo llegar
-              </h4>
-              <div className="overflow-hidden rounded-xl w-full h-48">
-                <iframe
-                  src={barberia.maps_embed}
-                  width="100%" height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
+          {barberia.maps_embed && (
+            <div className="mb-8 overflow-hidden rounded-2xl border border-border h-52">
+              <iframe src={barberia.maps_embed} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
             </div>
           )}
 
-          <div className="border-t border-border pt-5 flex items-center justify-center text-muted-foreground">
-            <span className="text-xs">Powered by BarberSaaS</span>
+          <div className="border-t border-border pt-6 text-center text-xs text-muted-foreground">
+            © {new Date().getFullYear()} {nombreBarberia}
           </div>
         </div>
       </footer>
 
-      {/* Modal Confirmación */}
+      {/* ── MODAL CONFIRMACIÓN ── */}
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
         <DialogContent className="sm:max-w-md">
-          <div className="flex flex-col items-center gap-2 pt-2 pb-1">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-              <Check className="h-8 w-8 text-green-500" />
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="flex size-16 items-center justify-center rounded-full bg-green-500/10">
+              <Check className="size-8 text-green-500" />
             </div>
-            <h2 className="text-xl font-bold">¡Turno reservado!</h2>
+            <h2 className="text-2xl font-black">¡Turno reservado!</h2>
             {reservaConfirmada?.nombre && (
-              <p className="text-sm text-muted-foreground">Gracias, <span className="font-medium text-foreground">{reservaConfirmada.nombre}</span></p>
+              <p className="text-sm text-muted-foreground">Gracias, <span className="font-semibold text-foreground">{reservaConfirmada.nombre}</span></p>
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-muted/40 divide-y divide-border text-sm mx-1">
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-muted-foreground flex items-center gap-2"><Scissors className="size-3.5" />Servicio</span>
-              <span className="font-medium">{reservaConfirmada?.servicio}</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-muted-foreground flex items-center gap-2"><Star className="size-3.5" />Barbero</span>
-              <span className="font-medium">{reservaConfirmada?.barbero ?? '—'}</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-muted-foreground flex items-center gap-2"><Calendar className="size-3.5" />Fecha</span>
-              <span className="font-medium capitalize">
-                {reservaConfirmada?.fecha && new Date(reservaConfirmada.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-muted-foreground flex items-center gap-2"><Clock className="size-3.5" />Hora</span>
-              <span className="font-medium">{reservaConfirmada?.hora_inicio} hs</span>
-            </div>
+          <div className="rounded-2xl border border-border divide-y divide-border overflow-hidden text-sm mx-1">
+            {[
+              { icon: Scissors, label: 'Servicio', value: reservaConfirmada?.servicio },
+              { icon: Star, label: 'Barbero', value: reservaConfirmada?.barbero ?? '—' },
+              { icon: Calendar, label: 'Fecha', value: reservaConfirmada?.fecha ? new Date(reservaConfirmada.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : '' },
+              { icon: Clock, label: 'Hora', value: `${reservaConfirmada?.hora_inicio} hs` },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-center justify-between px-4 py-3">
+                <span className="flex items-center gap-2 text-muted-foreground"><Icon className="size-3.5" />{label}</span>
+                <span className="font-semibold capitalize">{value}</span>
+              </div>
+            ))}
             {reservaConfirmada?.precio != null && (
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-muted-foreground">Precio</span>
-                <span className="font-bold text-primary">${Number(reservaConfirmada.precio).toLocaleString('es-AR')}</span>
+              <div className="flex justify-between px-4 py-3">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-black text-primary">${Number(reservaConfirmada.precio).toLocaleString('es-AR')}</span>
               </div>
             )}
           </div>
 
-          {barberia?.whatsapp_negocio && (
+          {barberia.whatsapp_negocio && (
             <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}?text=Hola! Reservé un turno para el ${reservaConfirmada?.fecha}`}
               target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm font-medium text-green-600 hover:bg-green-500/20 transition-colors mx-1">
+              className="flex items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm font-semibold text-green-600 hover:bg-green-500/20 transition-colors mx-1">
               <MessageCircle className="size-4" /> Contactar por WhatsApp
             </a>
           )}
 
-          <p className="text-center text-xs text-muted-foreground">
-            Te enviamos un WhatsApp y un email para confirmar o cancelar tu turno.
+          <p className="text-center text-xs text-muted-foreground px-4">
+            Te avisamos por WhatsApp y email para confirmar tu turno. Recibirás un recordatorio el día anterior.
           </p>
-          {barberia?.direccion && (
-            <p className="text-center text-xs text-muted-foreground">📍 {barberia.direccion}</p>
-          )}
-          <p className="text-center text-xs text-muted-foreground">Recibirás un recordatorio el día anterior.</p>
+          {barberia.direccion && <p className="text-center text-xs text-muted-foreground">📍 {barberia.direccion}</p>}
 
-          <Button onClick={resetReserva} className="w-full">Hacer otra reserva</Button>
+          <Button onClick={resetReserva} className="w-full" size="lg">Hacer otra reserva</Button>
         </DialogContent>
       </Dialog>
     </div>

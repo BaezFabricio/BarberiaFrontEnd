@@ -18,7 +18,8 @@ import {
   User,
   ShoppingBag,
   CreditCard,
-  Store
+  Store,
+  Globe
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -196,6 +197,21 @@ function AdminSidebar() {
       </SidebarHeader>
       <SidebarSeparator />
       <SidebarContent className="px-2">
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Ver sitio web" className="transition-colors">
+                  <Link href="/">
+                    <Globe className="size-4" />
+                    <span>Ver sitio web</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarSeparator />
         {menuItems.map((group) => (
           <SidebarGroup key={group.title}>
             <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -273,13 +289,17 @@ function AdminSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuItem>
-                  <User className="mr-2 size-4" />
-                  Mi Perfil
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/perfil">
+                    <User className="mr-2 size-4" />
+                    Mi Perfil
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 size-4" />
-                  Configuracion
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/configuracion">
+                    <Settings className="mr-2 size-4" />
+                    Configuracion
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>

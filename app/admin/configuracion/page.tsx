@@ -91,8 +91,6 @@ export default function ConfiguracionPage() {
   const cargarCarrusel = () => api.get<{ idimagen: number; url: string }[]>('/carrusel').then(setCarrusel).catch(() => {})
 
   const subirFotoCarrusel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Eliminar imagen anterior si existe
-    if (carrusel[0]) await api.delete(`/carrusel/${carrusel[0].idimagen}`).catch(() => {})
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
     setSubiendoFoto(true)
@@ -412,29 +410,40 @@ export default function ConfiguracionPage() {
 
         {/* Carrusel de fotos */}
         <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
-          <SectionTitle icon={ImagePlus} title="Imagen de portada" subtitle="Se muestra en la página pública de la barbería" />
-          <label className={`relative group w-48 h-28 rounded-lg overflow-hidden border-2 border-dashed border-border cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center ${subiendoFoto ? 'opacity-50 pointer-events-none' : ''}`}>
-            {carrusel[0] ? (
-              <img src={carrusel[0].url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                <ImagePlus className="size-6" />
-                <span className="text-xs">Subir imagen</span>
+          <SectionTitle icon={ImagePlus} title="Fotos del carrusel" subtitle="Se muestran en el hero de la página pública — podés subir varias" />
+          <div className="flex flex-wrap gap-3">
+            {carrusel.map((img, idx) => (
+              <div key={img.idimagen} className="relative group w-36 h-24 rounded-lg overflow-hidden border border-border">
+                <img src={img.url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => eliminarFotoCarrusel(img.idimagen)}
+                  className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                >
+                  <Trash2 className="size-3" />
+                </button>
+                {idx === 0 && (
+                  <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">Principal</span>
+                )}
               </div>
-            )}
-            {carrusel[0] && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ImagePlus className="size-5 text-white" />
-                <span className="text-xs text-white">Cambiar imagen</span>
-              </div>
-            )}
-            {subiendoFoto && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                <span className="text-xs text-white">Subiendo...</span>
-              </div>
-            )}
-            <input type="file" accept="image/*" className="hidden" onChange={subirFotoCarrusel} />
-          </label>
+            ))}
+
+            {/* Botón agregar */}
+            <label className={`relative flex w-36 h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary ${subiendoFoto ? 'pointer-events-none opacity-50' : ''}`}>
+              {subiendoFoto ? (
+                <>
+                  <span className="text-xs">Subiendo...</span>
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="size-5" />
+                  <span className="text-xs font-medium">Agregar fotos</span>
+                </>
+              )}
+              <input type="file" accept="image/*" multiple className="hidden" onChange={subirFotoCarrusel} />
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">Formatos: JPG, PNG, WEBP · Máx. 5 MB por imagen · La primera foto es la que aparece primero.</p>
         </div>
 
         {/* Nombre en header — fuente y colores */}
