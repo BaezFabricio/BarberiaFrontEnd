@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil, Trash2, KeyRound } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil, Trash2, KeyRound, ShieldCheck, ShieldMinus } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Image from 'next/image'
@@ -94,6 +94,10 @@ export default function BarberosPage() {
   const [nuevaPass, setNuevaPass] = useState('')
   const [loadingPass, setLoadingPass] = useState(false)
   const [errorPass, setErrorPass] = useState('')
+
+  const [rolBarb, setRolBarb] = useState<Barbero | null>(null)
+  const [modalRol, setModalRol] = useState(false)
+  const [loadingRol, setLoadingRol] = useState(false)
 
   const cargar = async () => {
     try { setBarberos(await api.get<Barbero[]>('/barberos')) } catch { setBarberos([]) }
@@ -233,6 +237,16 @@ export default function BarberosPage() {
     } finally { setLoadingEditar(false) }
   }
 
+  const cambiarRol = async (nuevoRol: 'admin' | 'barbero') => {
+    if (!rolBarb) return
+    setLoadingRol(true)
+    try {
+      await api.patch(`/barberos/${rolBarb.idusuario}/rol`, { rol: nuevoRol })
+      setModalRol(false)
+      cargar()
+    } catch { } finally { setLoadingRol(false) }
+  }
+
   const iniciales = (n: string) => n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2)
   const filtrados = barberos.filter(b => b.persona.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()))
 
@@ -351,6 +365,12 @@ export default function BarberosPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setPassBarb(b); setNuevaPass(''); setErrorPass(''); setModalPass(true) }}>
                               <KeyRound className="mr-2 size-4" />Cambiar contraseña
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setRolBarb(b); setModalRol(true) }}>
+                              {b.rol === 'admin'
+                                ? <><ShieldMinus className="mr-2 size-4" />Quitar acceso admin</>
+                                : <><ShieldCheck className="mr-2 size-4" />Dar acceso admin</>
+                              }
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => toggleEstado(b)}>
@@ -604,6 +624,31 @@ export default function BarberosPage() {
             <Button variant="outline" onClick={() => setModalPass(false)}>Cancelar</Button>
             <Button onClick={cambiarPassword} disabled={loadingPass || nuevaPass.length < 6}>
               {loadingPass ? 'Guardando...' : 'Cambiar contraseña'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal cambiar rol */}
+      <Dialog open={modalRol} onOpenChange={setModalRol}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{rolBarb?.rol === 'admin' ? 'Quitar acceso de administrador' : 'Dar acceso de administrador'}</DialogTitle>
+            <DialogDescription>
+              {rolBarb?.rol === 'admin'
+                ? <>¿Quitarle el acceso admin a <strong>{rolBarb?.persona.nombre_completo}</strong>? Solo podrá usar el panel de barbero.</>
+                : <><strong>{rolBarb?.persona.nombre_completo}</strong> podrá acceder al panel de administración completo (agenda, clientes, reportes, gastos, configuración).</>
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalRol(false)}>Cancelar</Button>
+            <Button
+              variant={rolBarb?.rol === 'admin' ? 'destructive' : 'default'}
+              onClick={() => cambiarRol(rolBarb?.rol === 'admin' ? 'barbero' : 'admin')}
+              disabled={loadingRol}
+            >
+              {loadingRol ? 'Guardando...' : rolBarb?.rol === 'admin' ? 'Quitar acceso admin' : 'Dar acceso admin'}
             </Button>
           </DialogFooter>
         </DialogContent>
