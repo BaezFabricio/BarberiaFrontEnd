@@ -21,7 +21,6 @@ type Barberia = {
   duracion_turno?: number; tiempo_cancelacion?: number; tiempo_confirmacion?: number; reservas_online?: boolean; orden_llegada?: boolean; dias_inactividad?: number
   instagram?: string; facebook?: string; whatsapp_negocio?: string
   gmail_remitente?: string; whatsapp_barbero?: string; callmebot_apikey?: string
-  greenapi_instance_id?: string; greenapi_api_token?: string
 }
 
 const COLORES_PRESET = [
@@ -57,7 +56,7 @@ export default function ConfiguracionPage() {
   const [horarios, setHorarios] = useState({ lv_desde: '09:00', lv_hasta: '19:00', sab_desde: '09:00', sab_hasta: '15:00', domingo_cerrado: true })
   const [reservas, setReservas] = useState({ duracion: '40', cancelacion: '60', confirmacion: '60', online: true, orden_llegada: true, inactividad: '60' })
   const [redes, setRedes] = useState({ instagram: '', facebook: '', whatsapp: '' })
-  const [notif, setNotif] = useState({ gmail_remitente: '', gmail_password: '', whatsapp_barbero: '', callmebot_apikey: '', greenapi_instance_id: '', greenapi_api_token: '' })
+  const [notif, setNotif] = useState({ gmail_remitente: '', gmail_password: '', whatsapp_barbero: '', callmebot_apikey: '' })
   const [carrusel, setCarrusel] = useState<{ idimagen: number; url: string }[]>([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -70,7 +69,10 @@ export default function ConfiguracionPage() {
   const probarEmail = async () => {
     setProbandoEmail(true); setResultadoPrueba(null)
     try {
-      const r = await api.post<{ mensaje: string }>('/notificaciones/prueba-email', {})
+      const r = await api.post<{ mensaje: string }>('/notificaciones/prueba-email', {
+        gmail_remitente: notif.gmail_remitente,
+        gmail_password:  notif.gmail_password,
+      })
       setResultadoPrueba({ tipo: 'email', ok: true, msg: r.mensaje })
     } catch (e: unknown) { setResultadoPrueba({ tipo: 'email', ok: false, msg: e instanceof Error ? e.message : 'Error' }) }
     finally { setProbandoEmail(false) }
@@ -119,7 +121,7 @@ export default function ConfiguracionPage() {
       setHorarios({ lv_desde: d.horario_lv_desde ?? '09:00', lv_hasta: d.horario_lv_hasta ?? '19:00', sab_desde: d.horario_sab_desde ?? '09:00', sab_hasta: d.horario_sab_hasta ?? '15:00', domingo_cerrado: d.domingo_cerrado ?? true })
       setReservas({ duracion: String(d.duracion_turno ?? 40), cancelacion: String(d.tiempo_cancelacion ?? 60), confirmacion: String(d.tiempo_confirmacion ?? 60), online: d.reservas_online ?? true, orden_llegada: d.orden_llegada ?? true, inactividad: String(d.dias_inactividad ?? 60) })
       setRedes({ instagram: d.instagram ?? '', facebook: d.facebook ?? '', whatsapp: d.whatsapp_negocio ?? '' })
-      setNotif(p => ({ ...p, gmail_remitente: d.gmail_remitente ?? '', whatsapp_barbero: d.whatsapp_barbero ?? '', callmebot_apikey: d.callmebot_apikey ?? '', greenapi_instance_id: d.greenapi_instance_id ?? '', greenapi_api_token: d.greenapi_api_token ?? '' }))
+      setNotif(p => ({ ...p, gmail_remitente: d.gmail_remitente ?? '', whatsapp_barbero: d.whatsapp_barbero ?? '', callmebot_apikey: d.callmebot_apikey ?? '' }))
     }).catch(() => {})
   }, [])
 
@@ -189,10 +191,8 @@ export default function ConfiguracionPage() {
         whatsapp_negocio:    redes.whatsapp,
         gmail_remitente:     notif.gmail_remitente,
         gmail_password:      notif.gmail_password || undefined,
-        whatsapp_barbero:      notif.whatsapp_barbero,
-        callmebot_apikey:      notif.callmebot_apikey,
-        greenapi_instance_id:  notif.greenapi_instance_id,
-        greenapi_api_token:    notif.greenapi_api_token,
+        whatsapp_barbero:    notif.whatsapp_barbero,
+        callmebot_apikey:    notif.callmebot_apikey,
       })
       aplicarColor(color, true)
       setExito(true)
@@ -390,7 +390,7 @@ export default function ConfiguracionPage() {
 
         {/* Notificaciones - col span 2 */}
         <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-6">
-          <SectionTitle icon={Bell} title="Notificaciones" subtitle="Configurá email y WhatsApp para avisar a clientes" />
+          <SectionTitle icon={Bell} title="Notificaciones" subtitle="Configurá el email para avisar a clientes" />
 
           {/* Email */}
           <div className="space-y-3 max-w-sm">
@@ -412,34 +412,6 @@ export default function ConfiguracionPage() {
             )}
           </div>
 
-          <div className="border-t border-border" />
-
-          {/* WhatsApp — Green API */}
-          <div className="space-y-3 max-w-sm">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">WhatsApp — Green API</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Creá una cuenta gratuita en <span className="font-medium text-foreground">green-api.com</span>, creá una instancia, escaneá el QR una vez y pegá las credenciales acá. Incluye 1500 mensajes/mes gratis.
-            </p>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Instance ID</Label>
-              <Input value={notif.greenapi_instance_id} onChange={e => setNotif(p => ({ ...p, greenapi_instance_id: e.target.value }))} placeholder="1234567890" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">API Token</Label>
-              <Input type="password" value={notif.greenapi_api_token} onChange={e => setNotif(p => ({ ...p, greenapi_api_token: e.target.value }))} placeholder="tu-api-token" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Número del barbero (para prueba)</Label>
-              <Input value={notif.whatsapp_barbero} onChange={e => setNotif(p => ({ ...p, whatsapp_barbero: e.target.value }))} placeholder="+54 9 381 000-0000" />
-              <p className="text-[11px] text-muted-foreground">A este número se le envían las notificaciones de nuevos turnos</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={probarWhatsApp} disabled={probandoWA} className="gap-2 text-xs">
-              {probandoWA ? 'Enviando...' : 'Enviar WhatsApp de prueba'}
-            </Button>
-            {resultadoPrueba?.tipo === 'wa' && (
-              <p className={`text-xs ${resultadoPrueba.ok ? 'text-green-500' : 'text-destructive'}`}>{resultadoPrueba.msg}</p>
-            )}
-          </div>
         </div>
 
         {/* Carrusel de fotos */}
