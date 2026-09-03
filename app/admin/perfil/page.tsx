@@ -29,7 +29,7 @@ export default function PerfilAdmin() {
   const fotoRef = useRef<HTMLInputElement>(null)
 
   // Datos personales
-  const [datosForm, setDatosForm] = useState({ nombre_completo: '', telefono: '' })
+  const [datosForm, setDatosForm] = useState({ nombre_completo: '', telefono: '', correo_electronico: '' })
   const [loadingDatos, setLoadingDatos] = useState(false)
   const [estadoDatos, setEstadoDatos] = useState<Estado>(null)
 
@@ -41,7 +41,7 @@ export default function PerfilAdmin() {
   useEffect(() => {
     api.get<Perfil>('/mi-perfil').then(p => {
       setPerfil(p)
-      setDatosForm({ nombre_completo: p.nombre_completo ?? '', telefono: p.telefono ?? '' })
+      setDatosForm({ nombre_completo: p.nombre_completo ?? '', telefono: p.telefono ?? '', correo_electronico: p.correo_electronico ?? '' })
     }).catch(() => {})
   }, [])
 
@@ -73,8 +73,8 @@ export default function PerfilAdmin() {
     if (!datosForm.nombre_completo.trim()) return setEstadoDatos({ tipo: 'error', mensaje: 'El nombre es obligatorio.' })
     setLoadingDatos(true)
     try {
-      await api.put('/mi-perfil', { nombre_completo: datosForm.nombre_completo, telefono: datosForm.telefono })
-      setPerfil(p => p ? { ...p, nombre_completo: datosForm.nombre_completo, telefono: datosForm.telefono } : p)
+      await api.put('/mi-perfil', { nombre_completo: datosForm.nombre_completo, telefono: datosForm.telefono, correo_electronico: datosForm.correo_electronico })
+      setPerfil(p => p ? { ...p, nombre_completo: datosForm.nombre_completo, telefono: datosForm.telefono, correo_electronico: datosForm.correo_electronico } : p)
       setEstadoDatos({ tipo: 'exito', mensaje: 'Datos actualizados correctamente.' })
     } catch (err) {
       setEstadoDatos({ tipo: 'error', mensaje: err instanceof Error ? err.message : 'Error al guardar.' })
@@ -201,8 +201,13 @@ export default function PerfilAdmin() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="correo">Correo electrónico</Label>
-                    <Input id="correo" value={perfil.correo_electronico} disabled className="bg-muted/40" />
-                    <p className="text-xs text-muted-foreground">El correo no puede modificarse desde aquí.</p>
+                    <Input
+                      id="correo"
+                      type="email"
+                      placeholder="tu@correo.com"
+                      value={datosForm.correo_electronico}
+                      onChange={e => setDatosForm(p => ({ ...p, correo_electronico: e.target.value }))}
+                    />
                   </div>
                   <AlertaBanner estado={estadoDatos} />
                   <Button type="submit" disabled={loadingDatos}>
