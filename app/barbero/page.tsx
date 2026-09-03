@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronRight, Plus, CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone, CreditCard, LayoutDashboard } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
 
 type Turno = {
@@ -70,6 +71,13 @@ export default function BarberoPage() {
   const [form, setForm] = useState({ ...FORM_VACIO, fecha: hoyStr })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [turnosDia, setTurnosDia] = useState<Turno[]>([])
+
+  // Cancelación con motivo
+  const [modalCancelar, setModalCancelar] = useState(false)
+  const [turnoCancelar, setTurnoCancelar] = useState<Turno | null>(null)
+  const [motivoCancelacion, setMotivoCancelacion] = useState('')
+  const [guardandoCancelacion, setGuardandoCancelacion] = useState(false)
 
   useEffect(() => {
     api.get<Turno[]>(`/turnos?fecha=${hoyStr}`).then(setTurnos).catch(() => {})
@@ -83,12 +91,28 @@ export default function BarberoPage() {
   }, [])
 
   const recargar = () => api.get<Turno[]>(`/turnos?fecha=${hoyStr}`).then(setTurnos).catch(() => {})
+
+  const abrirCancelacion = (t: Turno) => { setTurnoCancelar(t); setMotivoCancelacion(''); setModalCancelar(true) }
+  const confirmarCancelacion = async () => {
+    if (!turnoCancelar) return
+    setGuardandoCancelacion(true)
+    try {
+      await api.patch(`/turnos/${turnoCancelar.idagenda}/cancelar`, { motivo: motivoCancelacion })
+      setModalCancelar(false); recargar()
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error al cancelar') }
+    finally { setGuardandoCancelacion(false) }
+  }
   const cargarPendientesCobro = () => api.get<TurnoPendienteCobro[]>('/pagos/turnos-pendientes').then(setTurnosPendientesCobro).catch(() => {})
 
   const cambiarEstado = async (id: number, estado: string) => {
     await api.patch(`/turnos/${id}/estado`, { estado })
     recargar()
   }
+
+  const cargarTurnosDia = (fecha: string) =>
+    api.get<Turno[]>(`/turnos?fecha=${fecha}`)
+      .then(t => setTurnosDia(t.filter(x => x.estado !== 'cancelado' && x.estado !== 'archivado')))
+      .catch(() => setTurnosDia([]))
 
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault(); setError('')
@@ -217,7 +241,7 @@ export default function BarberoPage() {
         {/* Botón registrar orden de llegada */}
         {ordenLlegada && (
           <button
-            onClick={() => { setForm({ ...FORM_VACIO, fecha: hoyStr }); setError(''); setModal(true) }}
+            onClick={() => { setForm({ ...FORM_VACIO, fecha: hoyStr }); setError(''); cargarTurnosDia(hoyStr); setModal(true) }}
             className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/20 py-3 text-sm text-muted-foreground transition-colors hover:bg-card/40"
           >
             <Plus className="size-4" />
@@ -277,8 +301,8 @@ export default function BarberoPage() {
                         <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'ausente')}>
                           <AlertCircle className="mr-2 size-4 text-orange-400" />Ausente
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'cancelado')} className="text-destructive">
-                          <XCircle className="mr-2 size-4" />Cancelar
+                        <DropdownMenuItem onClick={() => abrirCancelacion(t)} className="text-destructive">
+                          <XCircle className="mr-2 size-4" />Cancelar turno
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -427,6 +451,38 @@ export default function BarberoPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal cancelar turno con motivo */}
+      <Dialog open={modalCancelar} onOpenChange={setModalCancelar}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancelar turno</DialogTitle>
+          </DialogHeader>
+          {turnoCancelar && (
+            <p className="text-sm text-muted-foreground -mt-2">
+              {turnoCancelar.cliente?.persona.nombre_completo ?? 'Sin nombre'} · {turnoCancelar.hora_inicio.slice(0,5)} hs · {turnoCancelar.servicio.nombre_servicio}
+            </p>
+          )}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Motivo (opcional)</Label>
+              <Textarea
+                placeholder="Ej: No puedo atender por razones de salud, problemas con el local, etc."
+                value={motivoCancelacion}
+                onChange={e => setMotivoCancelacion(e.target.value)}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">Si el cliente tiene email registrado, va a recibir un aviso con este motivo.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalCancelar(false)}>Volver</Button>
+            <Button variant="destructive" onClick={confirmarCancelacion} disabled={guardandoCancelacion}>
+              {guardandoCancelacion ? 'Cancelando...' : 'Confirmar cancelación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal nuevo turno */}
       <Dialog open={modal} onOpenChange={setModal}>
         <DialogContent className="sm:max-w-md">
@@ -459,7 +515,7 @@ export default function BarberoPage() {
               <div className="grid gap-2">
                 <Label>Fecha *</Label>
                 <Input type="date" value={form.fecha} min={hoyStr}
-                  onChange={e => setForm(p => ({...p, fecha: e.target.value}))} required />
+                  onChange={e => { setForm(p => ({...p, fecha: e.target.value})); cargarTurnosDia(e.target.value) }} required />
               </div>
               <div className="grid gap-2">
                 <Label>Hora *</Label>
@@ -471,6 +527,23 @@ export default function BarberoPage() {
                 </Select>
               </div>
             </div>
+            {turnosDia.length > 0 && (
+              <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Turnos ya agendados ese día</p>
+                {[...turnosDia].sort((a,b) => a.hora_inicio.localeCompare(b.hora_inicio)).map(t => (
+                  <div key={t.idagenda} className="flex items-center gap-2 text-xs">
+                    <span className="w-10 font-mono font-bold text-foreground">{t.hora_inicio.slice(0,5)}</span>
+                    <span className="text-muted-foreground">–</span>
+                    <span className="w-10 font-mono text-muted-foreground">{t.hora_fin.slice(0,5)}</span>
+                    <span className="flex-1 truncate text-muted-foreground">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</span>
+                    <span className="shrink-0 text-muted-foreground/70">{t.servicio.nombre_servicio}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {turnosDia.length === 0 && form.fecha && (
+              <p className="text-xs text-green-500">Sin turnos agendados para ese día.</p>
+            )}
             {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setModal(false)}>Cancelar</Button>
