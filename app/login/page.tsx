@@ -142,21 +142,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-foreground">¿No tenés cuenta?</span>
-            </div>
-          </div>
-
-          <Link
-            href="/registro"
-            className="flex w-full items-center justify-center rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            Registrá tu barbería
-          </Link>
         </CardContent>
         </Card>
       </div>
