@@ -665,6 +665,10 @@ export default function Landing() {
                   </div>
                 )}
 
+                <p className="text-xs text-muted-foreground text-center px-2">
+                  Al confirmar aceptás que tus datos (nombre, teléfono y email) sean utilizados exclusivamente para gestionar tu turno y enviarte notificaciones relacionadas.
+                </p>
+
                 <div className="flex justify-between pt-2">
                   <Button variant="outline" onClick={() => setStep(3)}>Atrás</Button>
                   <Button size="lg" onClick={handleConfirmarReserva}
@@ -794,7 +798,7 @@ export default function Landing() {
           )}
 
           <p className="text-center text-xs text-muted-foreground px-4">
-            Te avisamos por WhatsApp y email para confirmar tu turno. Recibirás un recordatorio el día anterior.
+            Te avisamos por email para confirmar tu turno. Recibirás un recordatorio el día anterior.
           </p>
           {barberia.direccion && <p className="text-center text-xs text-muted-foreground">📍 {barberia.direccion}</p>}
 

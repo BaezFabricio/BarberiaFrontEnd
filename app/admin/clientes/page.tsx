@@ -427,7 +427,7 @@ export default function ClientesPage() {
           <DialogHeader>
             <DialogTitle>Enviar promoción</DialogTitle>
             <DialogDescription>
-              Se enviará por WhatsApp y email a los {seleccionados.length} clientes seleccionados.
+              Se enviará por email a los {seleccionados.length} clientes seleccionados.
               Usá <code className="bg-muted px-1 rounded text-xs">{'{nombre}'}</code> para personalizar.
             </DialogDescription>
           </DialogHeader>
