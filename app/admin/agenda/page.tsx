@@ -30,6 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, UserCheck, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
+import { Textarea } from '@/components/ui/textarea'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,10 @@ export default function AgendaPage() {
   const [selectedBarberId, setSelectedBarberId] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [modalCancelar, setModalCancelar] = useState(false)
+  const [turnoCancelar, setTurnoCancelar] = useState<Turno | null>(null)
+  const [motivoCancelar, setMotivoCancelar] = useState('')
+  const [guardandoCancelar, setGuardandoCancelar] = useState(false)
 
   // Datos de la API
   const [turnos, setTurnos] = useState<Turno[]>([])
@@ -162,6 +167,24 @@ export default function AgendaPage() {
       await api.patch(`/turnos/${idagenda}/estado`, { estado })
       cargarTurnos()
     } catch (err) { console.error(err) }
+  }
+
+  const abrirCancelacion = (turno: Turno) => {
+    setTurnoCancelar(turno)
+    setMotivoCancelar('')
+    setModalCancelar(true)
+  }
+
+  const confirmarCancelacion = async () => {
+    if (!turnoCancelar) return
+    setGuardandoCancelar(true)
+    try {
+      await api.patch(`/turnos/${turnoCancelar.idagenda}/cancelar`, { motivo: motivoCancelar || undefined })
+      setModalCancelar(false)
+      setTurnoCancelar(null)
+      cargarTurnos()
+    } catch (err) { console.error(err) }
+    finally { setGuardandoCancelar(false) }
   }
 
   const isToday = (date: Date) => date.toDateString() === new Date().toDateString()
@@ -363,7 +386,7 @@ export default function AgendaPage() {
                                                 </DropdownMenuItem>
                                               )}
                                               <DropdownMenuSeparator />
-                                              <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'cancelado')} className="text-destructive">
+                                              <DropdownMenuItem onClick={() => abrirCancelacion(t)} className="text-destructive">
                                                 <XCircle className="mr-2 size-4" />Cancelar turno
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -479,6 +502,38 @@ export default function AgendaPage() {
           </Card>
         )}
       </div>
+      {/* Modal cancelar turno */}
+      <Dialog open={modalCancelar} onOpenChange={v => { if (!guardandoCancelar) setModalCancelar(v) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar turno</DialogTitle>
+            <DialogDescription>
+              {turnoCancelar && (
+                <>
+                  {turnoCancelar.cliente?.persona.nombre_completo ?? 'Sin cliente'} — {turnoCancelar.servicio.nombre_servicio} el {new Date(turnoCancelar.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} a las {turnoCancelar.hora_inicio.slice(0, 5)} hs
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>Motivo (opcional — se incluye en el email al cliente)</Label>
+            <Textarea
+              placeholder="Ej: El barbero no estará disponible ese día."
+              value={motivoCancelar}
+              onChange={e => setMotivoCancelar(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalCancelar(false)} disabled={guardandoCancelar}>
+              Volver
+            </Button>
+            <Button variant="destructive" onClick={confirmarCancelacion} disabled={guardandoCancelar}>
+              {guardandoCancelar ? 'Cancelando...' : 'Confirmar cancelación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
