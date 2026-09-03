@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Search, Receipt, TrendingDown, Home, Zap, Users, Wrench, Package, FileText, MoreHorizontal, Pencil, Trash2, Banknote } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
@@ -70,6 +69,7 @@ const FORM_GASTO_VACIO = { descripcion: '', categoria_gasto: '' as Categoria | '
 const FORM_RETIRO_VACIO = { idusuario_barbero: '', monto: '', descripcion: '', fecha_gasto: new Date().toISOString().split('T')[0] }
 
 type Periodo = 'hoy' | 'semana' | 'mes' | 'anio'
+type Tab = 'gastos' | 'retiros'
 
 function getRango(periodo: Periodo): { desde: string; hasta: string } {
   const hoy = new Date()
@@ -88,6 +88,7 @@ const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', c
 const fmtFecha = (f: string) => new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
 
 export default function GastosPage() {
+  const [tab, setTab] = useState<Tab>('gastos')
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [barberos, setBarberos] = useState<Barbero[]>([])
   const [periodo, setPeriodo] = useState<Periodo>('mes')
@@ -116,7 +117,6 @@ export default function GastosPage() {
     api.get<Barbero[]>('/barberos').then(setBarberos).catch(() => setBarberos([]))
   }, [])
 
-  // --- Gastos normales ---
   const abrirNuevoGasto = () => {
     setEditandoGasto(null)
     setFormGasto({ ...FORM_GASTO_VACIO, fecha_gasto: new Date().toISOString().split('T')[0] })
@@ -142,7 +142,6 @@ export default function GastosPage() {
     finally { setGuardando(false) }
   }
 
-  // --- Retiros de caja ---
   const abrirNuevoRetiro = () => {
     setEditandoRetiro(null)
     setFormRetiro({ ...FORM_RETIRO_VACIO, fecha_gasto: new Date().toISOString().split('T')[0] })
@@ -151,12 +150,7 @@ export default function GastosPage() {
   }
   const abrirEditarRetiro = (g: Gasto) => {
     setEditandoRetiro(g)
-    setFormRetiro({
-      idusuario_barbero: g.idusuario_barbero ? String(g.idusuario_barbero) : '',
-      monto: String(g.monto),
-      descripcion: g.descripcion,
-      fecha_gasto: g.fecha_gasto
-    })
+    setFormRetiro({ idusuario_barbero: g.idusuario_barbero ? String(g.idusuario_barbero) : '', monto: String(g.monto), descripcion: g.descripcion, fecha_gasto: g.fecha_gasto })
     setError('')
     setModalRetiro(true)
   }
@@ -167,13 +161,7 @@ export default function GastosPage() {
     try {
       const barbero = barberos.find(b => b.idusuario === Number(formRetiro.idusuario_barbero))
       const descripcion = formRetiro.descripcion.trim() || `Retiro de caja — ${barbero?.persona.nombre_completo ?? 'Barbero'}`
-      const payload = {
-        descripcion,
-        categoria_gasto: 'retiro_caja',
-        monto: Number(formRetiro.monto),
-        fecha_gasto: formRetiro.fecha_gasto,
-        idusuario_barbero: Number(formRetiro.idusuario_barbero)
-      }
+      const payload = { descripcion, categoria_gasto: 'retiro_caja', monto: Number(formRetiro.monto), fecha_gasto: formRetiro.fecha_gasto, idusuario_barbero: Number(formRetiro.idusuario_barbero) }
       if (editandoRetiro) await api.put(`/gastos/${editandoRetiro.idgasto}`, payload)
       else await api.post('/gastos', payload)
       setModalRetiro(false); cargar()
@@ -203,76 +191,87 @@ export default function GastosPage() {
     total: gastosNormales.filter(g => g.categoria_gasto === cat.value).reduce((acc, g) => acc + Number(g.monto), 0),
   }))
 
+  const periodoLabel = { hoy: 'hoy', semana: 'esta semana', mes: 'este mes', anio: 'este año' }[periodo]
+
   return (
     <>
-      <AdminHeader title="Gastos" description="Registro de gastos y retiros del negocio" />
+      <AdminHeader
+        title="Gastos"
+        description="Registro de gastos del negocio"
+        actions={
+          tab === 'gastos'
+            ? <Button className="gap-2" onClick={abrirNuevoGasto}><Plus className="size-4" /><span className="hidden sm:inline">Nuevo Gasto</span></Button>
+            : <Button className="gap-2" onClick={abrirNuevoRetiro}><Plus className="size-4" /><span className="hidden sm:inline">Registrar Retiro</span></Button>
+        }
+      />
 
       <div className="flex-1 space-y-6 p-4 md:p-6">
-        <Tabs defaultValue="gastos">
-          <TabsList>
-            <TabsTrigger value="gastos">Gastos</TabsTrigger>
-            <TabsTrigger value="retiros">Retiros de Caja</TabsTrigger>
-          </TabsList>
 
-          {/* ── TAB GASTOS ── */}
-          <TabsContent value="gastos" className="space-y-6 mt-6">
-            <div className="flex items-center justify-between">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 flex-1">
-                <Card className="md:col-span-2 lg:col-span-1">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Gastos</CardTitle>
-                    <TrendingDown className="size-4 text-destructive" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-destructive">{fmt(totalGastos)}</div>
-                    <p className="text-xs text-muted-foreground">{{ hoy: 'hoy', semana: 'esta semana', mes: 'este mes', anio: 'este año' }[periodo]}</p>
-                  </CardContent>
-                </Card>
-                {porCategoria.filter(c => c.total > 0).slice(0, 3).map(cat => {
-                  const Icon = categoryIcons[cat.value]
-                  return (
-                    <Card key={cat.value}>
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">{cat.label}</CardTitle>
-                        <div className={cn('rounded-lg p-2', categoryColors[cat.value])}>
-                          <Icon className="size-4" />
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{fmt(cat.total)}</div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-border">
+          <button
+            onClick={() => setTab('gastos')}
+            className={cn('px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px', tab === 'gastos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
+          >
+            Gastos
+          </button>
+          <button
+            onClick={() => setTab('retiros')}
+            className={cn('px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px', tab === 'retiros' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
+          >
+            Retiros de Caja
+          </button>
+        </div>
+
+        {/* ── GASTOS ── */}
+        {tab === 'gastos' && (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="md:col-span-2 lg:col-span-1">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Gastos</CardTitle>
+                  <TrendingDown className="size-4 text-destructive" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-destructive">{fmt(totalGastos)}</div>
+                  <p className="text-xs text-muted-foreground">{periodoLabel}</p>
+                </CardContent>
+              </Card>
+              {porCategoria.filter(c => c.total > 0).slice(0, 3).map(cat => {
+                const Icon = categoryIcons[cat.value]
+                return (
+                  <Card key={cat.value}>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">{cat.label}</CardTitle>
+                      <div className={cn('rounded-lg p-2', categoryColors[cat.value])}><Icon className="size-4" /></div>
+                    </CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{fmt(cat.total)}</div></CardContent>
+                  </Card>
+                )
+              })}
             </div>
 
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="relative max-w-sm">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Buscar gasto..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
-                </div>
-                <Select value={periodo} onValueChange={v => setPeriodo(v as Periodo)}>
-                  <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hoy">Hoy</SelectItem>
-                    <SelectItem value="semana">Esta semana</SelectItem>
-                    <SelectItem value="mes">Este mes</SelectItem>
-                    <SelectItem value="anio">Este año</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Categoría" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {CATEGORIAS.map(cat => <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Buscar gasto..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
               </div>
-              <Button className="gap-2" onClick={abrirNuevoGasto}>
-                <Plus className="size-4" /><span className="hidden sm:inline">Nuevo Gasto</span>
-              </Button>
+              <Select value={periodo} onValueChange={v => setPeriodo(v as Periodo)}>
+                <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hoy">Hoy</SelectItem>
+                  <SelectItem value="semana">Esta semana</SelectItem>
+                  <SelectItem value="mes">Este mes</SelectItem>
+                  <SelectItem value="anio">Este año</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Categoría" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {CATEGORIAS.map(cat => <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             <Card>
@@ -322,47 +321,45 @@ export default function GastosPage() {
                 </Table></div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </>
+        )}
 
-          {/* ── TAB RETIROS DE CAJA ── */}
-          <TabsContent value="retiros" className="space-y-6 mt-6">
-            <div className="flex items-center justify-between">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Retirado</CardTitle>
-                    <Banknote className="size-4 text-pink-400" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-pink-400">{fmt(totalRetiros)}</div>
-                    <p className="text-xs text-muted-foreground">{{ hoy: 'hoy', semana: 'esta semana', mes: 'este mes', anio: 'este año' }[periodo]}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Cantidad de retiros</CardTitle>
-                    <Users className="size-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{retiros.length}</div>
-                    <p className="text-xs text-muted-foreground">registros</p>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="flex gap-2 items-center">
-                <Select value={periodo} onValueChange={v => setPeriodo(v as Periodo)}>
-                  <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hoy">Hoy</SelectItem>
-                    <SelectItem value="semana">Esta semana</SelectItem>
-                    <SelectItem value="mes">Este mes</SelectItem>
-                    <SelectItem value="anio">Este año</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button className="gap-2" onClick={abrirNuevoRetiro}>
-                  <Plus className="size-4" /><span className="hidden sm:inline">Registrar Retiro</span>
-                </Button>
-              </div>
+        {/* ── RETIROS DE CAJA ── */}
+        {tab === 'retiros' && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Retirado</CardTitle>
+                  <Banknote className="size-4 text-pink-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-pink-400">{fmt(totalRetiros)}</div>
+                  <p className="text-xs text-muted-foreground">{periodoLabel}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Cantidad de retiros</CardTitle>
+                  <Users className="size-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{retiros.length}</div>
+                  <p className="text-xs text-muted-foreground">registros</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Select value={periodo} onValueChange={v => setPeriodo(v as Periodo)}>
+                <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hoy">Hoy</SelectItem>
+                  <SelectItem value="semana">Esta semana</SelectItem>
+                  <SelectItem value="mes">Este mes</SelectItem>
+                  <SelectItem value="anio">Este año</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Card>
@@ -413,8 +410,8 @@ export default function GastosPage() {
                 </Table></div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </>
+        )}
       </div>
 
       {/* Modal gasto */}
