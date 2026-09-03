@@ -12,7 +12,8 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3000'
@@ -104,6 +105,16 @@ export default function Landing() {
   const [errorReserva, setErrorReserva] = useState('')
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [reservaConfirmada, setReservaConfirmada] = useState<{ fecha: string; hora_inicio: string; servicio: string; barbero?: string; precio?: number; nombre?: string } | null>(null)
+
+  // Rating
+  type RatingBarbero = { idusuario: number; nombre_completo: string; foto_url?: string | null }
+  const [ratingBarbero, setRatingBarbero] = useState<RatingBarbero | null>(null)
+  const [ratingEstrellas, setRatingEstrellas] = useState(0)
+  const [ratingHover, setRatingHover] = useState(0)
+  const [ratingComentario, setRatingComentario] = useState('')
+  const [ratingNombre, setRatingNombre] = useState('')
+  const [enviandoRating, setEnviandoRating] = useState(false)
+  const [ratingEnviado, setRatingEnviado] = useState(false)
 
   // Carousel auto-advance
   useEffect(() => {
@@ -422,16 +433,31 @@ export default function Landing() {
                         : <div className="flex h-full items-center justify-center text-xl font-bold text-primary">{initials}</div>
                       }
                     </div>
-                    <div>
+                    <div className="flex-1 flex flex-col items-center">
                       <h3 className="font-bold text-sm leading-tight">{b.nombre_completo}</h3>
                       <div className="mt-1 flex items-center justify-center gap-1">
                         <Star className="size-3 fill-primary text-primary" />
-                        <span className="text-xs text-muted-foreground">{Number(b.rating_promedio).toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {b.rating_promedio > 0 ? Number(b.rating_promedio).toFixed(1) : 'Nuevo'}
+                        </span>
                       </div>
                       {b.especialidades && (
                         <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{b.especialidades}</p>
                       )}
                     </div>
+                    <button
+                      onClick={() => {
+                        setRatingBarbero(b)
+                        setRatingEstrellas(0)
+                        setRatingHover(0)
+                        setRatingComentario('')
+                        setRatingNombre('')
+                        setRatingEnviado(false)
+                      }}
+                      className="mt-1 w-full rounded-lg border border-primary/30 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      ⭐ Calificar
+                    </button>
                   </div>
                 )
               })}
@@ -755,6 +781,101 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* ── MODAL CALIFICACIÓN ── */}
+      <Dialog open={!!ratingBarbero} onOpenChange={open => { if (!open) setRatingBarbero(null) }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">Calificar barbero</DialogTitle>
+          </DialogHeader>
+          {ratingEnviado ? (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <div className="flex size-14 items-center justify-center rounded-full bg-green-500/10">
+                <Check className="size-7 text-green-500" />
+              </div>
+              <p className="font-semibold">¡Gracias por tu calificación!</p>
+              <p className="text-sm text-muted-foreground text-center">Tu opinión ayuda a mejorar el servicio.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              {/* Barbero info */}
+              <div className="flex items-center gap-3">
+                <div className="size-12 overflow-hidden rounded-full border border-border bg-primary/10 shrink-0">
+                  {ratingBarbero?.foto_url
+                    ? <img src={ratingBarbero.foto_url} alt="" className="h-full w-full object-cover" />
+                    : <div className="flex h-full items-center justify-center text-base font-bold text-primary">
+                        {ratingBarbero?.nombre_completo.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                  }
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">{ratingBarbero?.nombre_completo}</p>
+                  <p className="text-xs text-muted-foreground">Seleccioná tu calificación</p>
+                </div>
+              </div>
+
+              {/* Estrellas */}
+              <div className="flex justify-center gap-2 py-1">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setRatingEstrellas(n)}
+                    onMouseEnter={() => setRatingHover(n)}
+                    onMouseLeave={() => setRatingHover(0)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star className={`size-9 transition-colors ${n <= (ratingHover || ratingEstrellas) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                  </button>
+                ))}
+              </div>
+              {ratingEstrellas > 0 && (
+                <p className="text-center text-xs font-medium text-primary -mt-2">
+                  {['', '😕 Muy malo', '😐 Regular', '🙂 Bueno', '😊 Muy bueno', '🤩 Excelente'][ratingEstrellas]}
+                </p>
+              )}
+
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="Tu nombre (opcional)"
+                value={ratingNombre}
+                onChange={e => setRatingNombre(e.target.value)}
+              />
+              <Textarea
+                placeholder="Comentario opcional..."
+                rows={3}
+                className="text-sm resize-none"
+                value={ratingComentario}
+                onChange={e => setRatingComentario(e.target.value)}
+              />
+
+              <Button
+                className="w-full"
+                disabled={ratingEstrellas === 0 || enviandoRating}
+                onClick={async () => {
+                  if (!ratingBarbero || ratingEstrellas === 0) return
+                  setEnviandoRating(true)
+                  try {
+                    const r = await fetch(`${BACKEND_URL}/api/public/valorar`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        idusuario_barbero: ratingBarbero.idusuario,
+                        nombre_cliente: ratingNombre || undefined,
+                        estrellas: ratingEstrellas,
+                        comentario: ratingComentario || undefined,
+                      }),
+                    })
+                    if (r.ok) setRatingEnviado(true)
+                  } finally { setEnviandoRating(false) }
+                }}
+              >
+                {enviandoRating ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                {enviandoRating ? 'Enviando...' : 'Enviar calificación'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── MODAL CONFIRMACIÓN ── */}
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
