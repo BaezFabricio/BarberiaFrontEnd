@@ -19,7 +19,8 @@ import {
   ShoppingBag,
   CreditCard,
   Store,
-  Globe
+  Globe,
+  Menu
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -341,6 +342,41 @@ export function AdminHeader({ title, description, actions }: AdminHeaderProps) {
   )
 }
 
+const bottomNavItems = [
+  { title: 'Inicio', href: '/admin', icon: LayoutDashboard },
+  { title: 'Agenda', href: '/admin/agenda', icon: Calendar },
+  { title: 'Clientes', href: '/admin/clientes', icon: Users },
+  { title: 'Barberos', href: '/admin/barberos', icon: Scissors },
+]
+
+function BottomNav() {
+  const pathname = usePathname()
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+      {bottomNavItems.map(item => {
+        const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors',
+              isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <item.icon className={cn('size-5', isActive && 'text-primary')} />
+            <span>{item.title}</span>
+          </Link>
+        )
+      })}
+      <SidebarTrigger className="flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground h-auto rounded-none">
+        <Menu className="size-5" />
+        <span>Más</span>
+      </SidebarTrigger>
+    </nav>
+  )
+}
+
 interface AdminLayoutProps {
   children: React.ReactNode
 }
@@ -350,9 +386,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <SidebarProvider defaultOpen={typeof window !== 'undefined' && window.innerWidth >= 768} style={{ overflow: 'hidden', maxWidth: '100vw' }}>
       <AdminRouteTransition />
       <AdminSidebar />
-      <SidebarInset className="flex flex-col min-w-0 overflow-hidden">
+      <SidebarInset className="flex flex-col min-w-0 overflow-hidden pb-16 md:pb-0">
         {children}
       </SidebarInset>
+      <BottomNav />
     </SidebarProvider>
   )
 }

@@ -61,6 +61,8 @@ export default function ClientesPage() {
   const [diasConfig, setDiasConfig] = useState(60)
   const [loadingInactivos, setLoadingInactivos] = useState(false)
   const [seleccionados, setSeleccionados] = useState<number[]>([])
+  const [seleccionadosTodos, setSeleccionadosTodos] = useState<number[]>([])
+  const [promoIds, setPromoIds] = useState<number[]>([])
   const [modalPromo, setModalPromo] = useState(false)
   const [mensajePromo, setMensajePromo] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -142,12 +144,26 @@ export default function ClientesPage() {
     setSeleccionados(prev => prev.length === inactivos.length ? [] : inactivos.map(i => i.idcliente))
   }
 
+  const toggleSeleccionTodos = (id: number) => {
+    setSeleccionadosTodos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const toggleTodosLista = () => {
+    setSeleccionadosTodos(prev => prev.length === filtrados.length ? [] : filtrados.map(c => c.idcliente))
+  }
+
+  const abrirPromo = (ids: number[]) => {
+    setPromoIds(ids)
+    setModalPromo(true)
+    setResultadoEnvio(null)
+  }
+
   const enviarPromo = async () => {
-    if (!mensajePromo.trim() || seleccionados.length === 0) return
+    if (!mensajePromo.trim() || promoIds.length === 0) return
     setEnviando(true)
     try {
       const r = await api.post<{ enviados: number; total: number }>('/clientes/enviar-promo', {
-        ids: seleccionados,
+        ids: promoIds,
         mensaje: mensajePromo,
       })
       setResultadoEnvio(`Enviado a ${r.enviados} de ${r.total} clientes`)
@@ -214,7 +230,7 @@ export default function ClientesPage() {
               </Card>
             </div>
 
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input placeholder="Buscar por nombre o email..." value={busqueda}
@@ -227,6 +243,14 @@ export default function ClientesPage() {
                   <SelectItem value="nuevos">Nuevos (30 días)</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                disabled={seleccionadosTodos.length === 0}
+                onClick={() => abrirPromo(seleccionadosTodos)}
+                className="gap-2 shrink-0"
+              >
+                <Send className="size-4" />
+                Enviar promo ({seleccionadosTodos.length})
+              </Button>
             </div>
 
             <Card>
@@ -234,6 +258,12 @@ export default function ClientesPage() {
                 <div className="overflow-x-auto"><Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={filtrados.length > 0 && seleccionadosTodos.length === filtrados.length}
+                          onCheckedChange={toggleTodosLista}
+                        />
+                      </TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead className="hidden md:table-cell">Contacto</TableHead>
                       <TableHead className="hidden lg:table-cell">Registro</TableHead>
@@ -244,12 +274,18 @@ export default function ClientesPage() {
                   <TableBody>
                     {filtrados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                           No hay clientes todavía
                         </TableCell>
                       </TableRow>
                     ) : filtrados.map(c => (
                       <TableRow key={c.idcliente}>
+                        <TableCell>
+                          <Checkbox
+                            checked={seleccionadosTodos.includes(c.idcliente)}
+                            onCheckedChange={() => toggleSeleccionTodos(c.idcliente)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="size-10">
@@ -313,7 +349,7 @@ export default function ClientesPage() {
                 Clientes sin visita en los últimos <span className="font-medium text-foreground">{diasConfig} días</span>.
                 Podés enviarles una promo para recuperarlos.
               </p>
-              <Button disabled={seleccionados.length === 0} onClick={() => { setModalPromo(true); setResultadoEnvio(null) }} className="gap-2">
+              <Button disabled={seleccionados.length === 0} onClick={() => abrirPromo(seleccionados)} className="gap-2">
                 <Send className="size-4" />
                 Enviar promo ({seleccionados.length})
               </Button>
@@ -427,7 +463,7 @@ export default function ClientesPage() {
           <DialogHeader>
             <DialogTitle>Enviar promoción</DialogTitle>
             <DialogDescription>
-              Se enviará por email a los {seleccionados.length} clientes seleccionados.
+              Se enviará por email a los {promoIds.length} clientes seleccionados.
               Usá <code className="bg-muted px-1 rounded text-xs">{'{nombre}'}</code> para personalizar.
             </DialogDescription>
           </DialogHeader>
