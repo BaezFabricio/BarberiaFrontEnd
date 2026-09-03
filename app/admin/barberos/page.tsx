@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil, Trash2, KeyRound, ShieldCheck, ShieldMinus } from 'lucide-react'
@@ -353,15 +353,19 @@ export default function BarberosPage() {
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="size-8"><MoreHorizontal className="size-4" /></Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pb-1">
+                              {b.persona.nombre_completo.split(' ')[0]}
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => abrirEditar(b)}>
                               <Pencil className="mr-2 size-4" />Editar datos
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setFotoBarbero(b); setErrorFoto(''); setModalFoto(true) }}>
-                              <Users className="mr-2 size-4" />Cambiar foto de perfil
+                              <Users className="mr-2 size-4" />Cambiar foto
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => abrirHorarios(b)}>
-                              <Clock className="mr-2 size-4" />Configurar horarios
+                              <Clock className="mr-2 size-4" />Horarios
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setPassBarb(b); setNuevaPass(''); setErrorPass(''); setModalPass(true) }}>
                               <KeyRound className="mr-2 size-4" />Cambiar contraseña
@@ -373,12 +377,15 @@ export default function BarberosPage() {
                               }
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => toggleEstado(b)}>
+                            <DropdownMenuItem
+                              onClick={() => toggleEstado(b)}
+                              className={(b.estado ?? 'activo') === 'activo' ? 'text-orange-500 focus:text-orange-500' : ''}
+                            >
                               <Power className="mr-2 size-4" />
                               {(b.estado ?? 'activo') === 'activo' ? 'Desactivar' : 'Activar'}
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setEliminarBarbero(b); setModalEliminar(true) }}>
-                              <Trash2 className="mr-2 size-4" />Eliminar barbero
+                              <Trash2 className="mr-2 size-4" />Eliminar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
