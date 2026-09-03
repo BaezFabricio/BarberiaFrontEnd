@@ -12,25 +12,10 @@ const bebasNeue = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: '--f
 const abrilFatface = Abril_Fatface({ subsets: ["latin"], weight: "400", variable: '--font-abril' });
 
 export const metadata: Metadata = {
-  title: 'Barber Studio - Sistema de Gestion',
+  title: 'AR Estudios Barbershop',
   description: 'Sistema profesional de gestion para barberias. Agenda turnos, gestiona clientes, barberos y reportes.',
-  generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/icon.svg',
   },
 }
 
