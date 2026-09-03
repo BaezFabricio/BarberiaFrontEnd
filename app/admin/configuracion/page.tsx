@@ -239,6 +239,10 @@ export default function ConfiguracionPage() {
             <Label className="text-xs text-muted-foreground">Correo electronico</Label>
             <Input value={negocio.correo} onChange={e => setNegocio(p => ({ ...p, correo: e.target.value }))} placeholder="info@barberstudio.com" />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Slogan</Label>
+            <Input value={negocio.slogan} onChange={e => setNegocio(p => ({ ...p, slogan: e.target.value }))} placeholder="El mejor corte de la ciudad" />
+          </div>
         </div>
 
         {/* Horarios */}
