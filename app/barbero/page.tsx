@@ -8,7 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone, CreditCard, LayoutDashboard, Plus, ChevronRight, Star, TrendingUp, Clock, UserCheck, MoreVertical } from 'lucide-react'
+import {
+  CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone,
+  CreditCard, LayoutDashboard, Plus, ChevronRight, Star, TrendingUp,
+  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User,
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -28,16 +32,17 @@ type TurnoPendienteCobro = {
   cliente?: { persona: { nombre_completo: string } }
 }
 type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number }
+type Tab = 'hoy' | 'agenda' | 'stats' | 'caja' | 'productos'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const ESTADO: Record<string, { label: string; dot: string; text: string }> = {
-  pendiente:  { label: 'Reservado',             dot: 'bg-blue-400',   text: 'text-blue-400' },
-  confirmado: { label: 'Confirmado',             dot: 'bg-yellow-400', text: 'text-yellow-400' },
-  atendido:   { label: 'Falta cobrar',           dot: 'bg-orange-400', text: 'text-orange-400' },
-  cobrado:    { label: 'Cobrado',                dot: 'bg-green-400',  text: 'text-green-400' },
-  ausente:    { label: 'Ausente',                dot: 'bg-orange-500', text: 'text-orange-500' },
-  cancelado:  { label: 'Cancelado',              dot: 'bg-red-400',    text: 'text-red-400' },
+  pendiente:  { label: 'Reservado',   dot: 'bg-blue-400',   text: 'text-blue-400' },
+  confirmado: { label: 'Confirmado',  dot: 'bg-yellow-400', text: 'text-yellow-400' },
+  atendido:   { label: 'Falta cobrar',dot: 'bg-orange-400', text: 'text-orange-400' },
+  cobrado:    { label: 'Cobrado',     dot: 'bg-green-400',  text: 'text-green-400' },
+  ausente:    { label: 'Ausente',     dot: 'bg-orange-500', text: 'text-orange-500' },
+  cancelado:  { label: 'Cancelado',   dot: 'bg-red-400',    text: 'text-red-400' },
 }
 
 const HORAS = Array.from({ length: 24 }, (_, h) =>
@@ -48,50 +53,48 @@ const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sába
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const FORM0 = { nombre_cliente: '', telefono_cliente: '', idservicio: '', hora_inicio: '', fecha: '' }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const fmt = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${n}`
 const hoyStr = () => new Date().toISOString().split('T')[0]
+const fmt    = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${n}`
 const initials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
-// ── Página principal ──────────────────────────────────────────────────────────
+// ── Página ────────────────────────────────────────────────────────────────────
 
 export default function BarberoPage() {
   const hoy = new Date()
+
   const [turnos, setTurnos]       = useState<Turno[]>([])
   const [perfil, setPerfil]       = useState<Perfil | null>(null)
   const [servicios, setServicios] = useState<Servicio[]>([])
-  const [tab, setTab]             = useState<'hoy' | 'agenda' | 'stats' | 'caja' | 'productos'>('hoy')
+  const [tab, setTab]             = useState<Tab>('hoy')
   const [ordenLlegada, setOrdenLlegada] = useState(true)
 
   const [turnosPendientesCobro, setTurnosPendientesCobro] = useState<TurnoPendienteCobro[]>([])
   const [productosVenta, setProductosVenta] = useState<ProductoVenta[]>([])
 
-  // Modales
-  const [modalNuevo,   setModalNuevo]   = useState(false)
-  const [modalCancelar,setModalCancelar]= useState(false)
-  const [modalCobro,   setModalCobro]   = useState(false)
-  const [modalVenta,   setModalVenta]   = useState(false)
-  const [agendaRefreshKey, setAgendaRefreshKey] = useState(0)
+  const [modalNuevo,    setModalNuevo]    = useState(false)
+  const [modalCancelar, setModalCancelar] = useState(false)
+  const [modalCobro,    setModalCobro]    = useState(false)
+  const [modalVenta,    setModalVenta]    = useState(false)
 
-  const [form, setForm] = useState({ ...FORM0, fecha: hoyStr() })
+  const [form,      setForm]      = useState({ ...FORM0, fecha: hoyStr() })
   const [turnosDia, setTurnosDia] = useState<Turno[]>([])
   const [guardando, setGuardando] = useState(false)
   const [error,     setError]     = useState('')
 
-  const [turnoCancelar,      setTurnoCancelar]      = useState<Turno | null>(null)
-  const [motivoCancelacion,  setMotivoCancelacion]  = useState('')
+  const [turnoCancelar,        setTurnoCancelar]        = useState<Turno | null>(null)
+  const [motivoCancelacion,    setMotivoCancelacion]    = useState('')
   const [guardandoCancelacion, setGuardandoCancelacion] = useState(false)
+  const [agendaRefreshKey,     setAgendaRefreshKey]     = useState(0)
 
-  const [turnoACobrar, setTurnoACobrar] = useState<TurnoPendienteCobro | null>(null)
-  const [montoCobro,   setMontoCobro]   = useState('')
-  const [metodoCobro,  setMetodoCobro]  = useState('efectivo')
+  const [turnoACobrar,   setTurnoACobrar]   = useState<TurnoPendienteCobro | null>(null)
+  const [montoCobro,     setMontoCobro]     = useState('')
+  const [metodoCobro,    setMetodoCobro]    = useState('efectivo')
   const [guardandoCobro, setGuardandoCobro] = useState(false)
   const [errorCobro,     setErrorCobro]     = useState('')
 
-  const [formVenta,       setFormVenta]       = useState({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
-  const [guardandoVenta,  setGuardandoVenta]  = useState(false)
-  const [errorVenta,      setErrorVenta]      = useState('')
+  const [formVenta,      setFormVenta]      = useState({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
+  const [guardandoVenta, setGuardandoVenta] = useState(false)
+  const [errorVenta,     setErrorVenta]     = useState('')
 
   const recargar = useCallback(() =>
     api.get<Turno[]>(`/turnos?fecha=${hoyStr()}`).then(setTurnos).catch(() => {}), [])
@@ -122,9 +125,7 @@ export default function BarberoPage() {
     setGuardandoCancelacion(true)
     try {
       await api.patch(`/turnos/${turnoCancelar.idagenda}/cancelar`, { motivo: motivoCancelacion })
-      setModalCancelar(false)
-      recargar()
-      setAgendaRefreshKey(k => k + 1)
+      setModalCancelar(false); recargar(); setAgendaRefreshKey(k => k + 1)
     } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error al cancelar') }
     finally { setGuardandoCancelacion(false) }
   }
@@ -169,235 +170,320 @@ export default function BarberoPage() {
   }
 
   const turnosOrdenados = [...turnos].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
-  const activos   = turnosOrdenados.filter(t => !['atendido','cobrado','cancelado','ausente'].includes(t.estado))
-  const proximo   = activos[0]
-  const hechos    = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
-  const pendientes= turnos.filter(t => t.estado === 'pendiente' || t.estado === 'confirmado').length
-  const ingresos  = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
+  const activos    = turnosOrdenados.filter(t => !['atendido','cobrado','cancelado','ausente'].includes(t.estado))
+  const proximo    = activos[0]
+  const hechos     = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
+  const pendientes = turnos.filter(t => t.estado === 'pendiente' || t.estado === 'confirmado').length
+  const ingresos   = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
 
   const tiempoHastaProximo = proximo ? (() => {
     const [ph, pm] = proximo.hora_inicio.split(':').map(Number)
     const diff = (ph * 60 + pm) - (hoy.getHours() * 60 + hoy.getMinutes())
     if (diff <= 0) return 'Ahora'
     if (diff < 60) return `${diff} min`
-    return `${Math.floor(diff/60)}h ${diff % 60 > 0 ? ` ${diff % 60}min` : ''}`
+    return `${Math.floor(diff/60)}h ${diff % 60 > 0 ? `${diff % 60}min` : ''}`
   })() : null
 
   const isOwnerOrAdmin = (() => {
     try { const p = JSON.parse(atob(localStorage.getItem('token')!.split('.')[1])); return p.rol === 'owner' || p.rol === 'admin' } catch { return false }
   })()
 
-  const tabs = ['hoy', 'agenda', 'stats', ...(perfil?.puede_cobrar ? ['caja'] : []), ...(perfil?.puede_vender ? ['productos'] : [])]
-  const TAB_LABELS: Record<string, string> = { hoy: 'Hoy', agenda: 'Agenda', stats: 'Stats', caja: 'Caja', productos: 'Productos' }
-
   const proximosDias = Array.from({ length: 5 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() + i + 1)
     return { fecha: d.toISOString().split('T')[0], label: `${DIAS[d.getDay()]} ${d.getDate()}` }
   })
 
-  return (
-    <div className="min-h-screen bg-background">
+  // Nav items
+  const navItems: { id: Tab; icon: React.ReactNode; label: string; show: boolean }[] = [
+    { id: 'hoy',      icon: <Home className="size-5" />,      label: 'Hoy',      show: true },
+    { id: 'agenda',   icon: <Calendar className="size-5" />,  label: 'Agenda',   show: true },
+    { id: 'stats',    icon: <BarChart2 className="size-5" />, label: 'Stats',    show: true },
+    { id: 'caja',     icon: <DollarSign className="size-5" />,label: 'Caja',     show: !!perfil?.puede_cobrar },
+    { id: 'productos',icon: <Package className="size-5" />,   label: 'Productos',show: !!perfil?.puede_vender },
+  ]
+  const visibleNav = navItems.filter(n => n.show)
 
-      {/* Header */}
-      <div className="border-b border-border/40 bg-card/30 px-4 pb-4 pt-5">
-        {isOwnerOrAdmin && (
-          <a href="/admin" className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit">
-            <LayoutDashboard className="size-3.5" />
-            Panel de administración
+  // ── Secciones de contenido reutilizables ────────────────────────────────────
+
+  const SeccionStats = () => (
+    <div className="grid grid-cols-3 gap-2 mb-4">
+      {[
+        { val: hechos,        label: 'Hechos',    color: 'text-green-400' },
+        { val: pendientes,    label: 'Pendientes',color: 'text-blue-400' },
+        { val: fmt(ingresos), label: 'Hoy',       color: 'text-primary' },
+      ].map(s => (
+        <div key={s.label} className="rounded-xl border border-border/40 bg-card/40 p-3 text-center">
+          <p className={`text-lg font-bold ${s.color}`}>{s.val}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+        </div>
+      ))}
+    </div>
+  )
+
+  const SeccionProximo = () => proximo ? (
+    <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 p-4 mb-4">
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right">
+        <p className="text-3xl font-black tabular-nums">{proximo.hora_inicio.slice(0,5)}</p>
+        <p className="text-xs font-medium text-primary">{tiempoHastaProximo}</p>
+      </div>
+      <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">Próximo</p>
+      <p className="max-w-[60%] truncate font-semibold">{proximo.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+      <p className="max-w-[60%] truncate text-sm text-muted-foreground">{proximo.servicio.nombre_servicio}</p>
+    </div>
+  ) : null
+
+  const SeccionTurnosHoy = () => (
+    <div className="space-y-2">
+      {turnosOrdenados.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Sin turnos para hoy</p>
+      ) : turnosOrdenados.map(t => {
+        const est = ESTADO[t.estado] ?? ESTADO.pendiente
+        const finalizado = ['atendido','cobrado','ausente','cancelado'].includes(t.estado)
+        return (
+          <div key={t.idagenda} className={cn('flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 px-3 py-3 transition-opacity', finalizado && 'opacity-40')}>
+            <div className="shrink-0 w-10 text-center">
+              <p className="text-sm font-bold tabular-nums">{t.hora_inicio.slice(0,5)}</p>
+              <p className="text-[9px] text-muted-foreground">{t.hora_fin.slice(0,5)}</p>
+            </div>
+            <div className="w-px h-7 bg-border/50 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+              <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio}</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className={cn('size-2 rounded-full', est.dot)} />
+              {!finalizado && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="size-7 text-muted-foreground">
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {t.estado === 'pendiente' && (
+                      <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
+                        <CheckCircle className="mr-2 size-4 text-yellow-400" />Confirmar
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                      <UserCheck className="mr-2 size-4 text-green-400" />Marcar atendido
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'ausente')}>
+                      <AlertCircle className="mr-2 size-4 text-orange-400" />Ausente
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => abrirCancelacion(t)} className="text-destructive">
+                      <XCircle className="mr-2 size-4" />Cancelar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  const SeccionAgendaDias = () => (
+    <div className="space-y-4">
+      {proximosDias.map(d => (
+        <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} refreshKey={agendaRefreshKey} onCambiarEstado={cambiarEstado} onCancelar={abrirCancelacion} />
+      ))}
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-background md:flex">
+
+      {/* ── Sidebar desktop ──────────────────────────────────────────────────── */}
+      <aside className="hidden md:flex flex-col w-16 border-r border-border/40 bg-card/30 sticky top-0 h-screen">
+        {/* Avatar */}
+        <div className="flex flex-col items-center pt-4 pb-2 border-b border-border/40">
+          <div className="size-10 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center overflow-hidden">
+            {perfil?.foto_url
+              ? <img src={perfil.foto_url} alt="" className="size-10 object-cover" />
+              : <span className="text-xs font-bold text-primary">{perfil ? initials(perfil.nombre_completo) : '..'}</span>
+            }
+          </div>
+        </div>
+        {/* Nav items */}
+        <nav className="flex flex-col items-center gap-1 py-3 flex-1">
+          {visibleNav.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={cn(
+                'flex flex-col items-center gap-1 w-12 py-2.5 rounded-xl transition-colors',
+                tab === item.id
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              )}
+            >
+              {item.icon}
+              <span className="text-[9px] font-medium">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        {/* Bottom: perfil + admin */}
+        <div className="flex flex-col items-center gap-1 py-3 border-t border-border/40">
+          {isOwnerOrAdmin && (
+            <a href="/admin" className="flex flex-col items-center gap-1 w-12 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+              <LayoutDashboard className="size-5" />
+              <span className="text-[9px]">Admin</span>
+            </a>
+          )}
+          <a href="/barbero/perfil" className="flex flex-col items-center gap-1 w-12 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+            <User className="size-5" />
+            <span className="text-[9px]">Perfil</span>
           </a>
-        )}
-        <div className="flex items-center justify-between">
+        </div>
+      </aside>
+
+      {/* ── Contenido principal ───────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
+
+        {/* Topbar */}
+        <header className="border-b border-border/40 bg-card/30 px-4 py-3 md:px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative size-11 shrink-0 overflow-hidden rounded-full bg-primary/20 ring-2 ring-primary/30">
+            {/* Avatar solo en móvil */}
+            <div className="size-9 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center overflow-hidden md:hidden shrink-0">
               {perfil?.foto_url
-                ? <img src={perfil.foto_url} alt="" className="size-11 object-cover" />
-                : <span className="flex h-full items-center justify-center text-sm font-bold text-primary">
-                    {perfil ? initials(perfil.nombre_completo) : '..'}
-                  </span>
+                ? <img src={perfil.foto_url} alt="" className="size-9 object-cover" />
+                : <span className="text-xs font-bold text-primary">{perfil ? initials(perfil.nombre_completo) : '..'}</span>
               }
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{DIAS[hoy.getDay()]}, {hoy.getDate()} de {MESES[hoy.getMonth()]}</p>
-              <h1 className="text-xl font-bold leading-tight">Hola, {perfil?.nombre_completo.split(' ')[0] ?? '...'}</h1>
+              <h1 className="text-lg font-bold leading-tight md:text-xl">Hola, {perfil?.nombre_completo.split(' ')[0] ?? '...'}</h1>
             </div>
           </div>
-          {(perfil?.rating_promedio ?? 0) > 0 && (
-            <div className="flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1">
-              <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-bold text-yellow-400">{Number(perfil?.rating_promedio ?? 0).toFixed(1)}</span>
+          <div className="flex items-center gap-2">
+            {(perfil?.rating_promedio ?? 0) > 0 && (
+              <div className="flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1">
+                <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
+                <span className="text-sm font-bold text-yellow-400">{Number(perfil?.rating_promedio ?? 0).toFixed(1)}</span>
+              </div>
+            )}
+            {ordenLlegada && (
+              <Button size="sm" variant="outline" className="gap-1.5 hidden md:flex"
+                onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setModalNuevo(true) }}>
+                <Plus className="size-3.5" />Nuevo turno
+              </Button>
+            )}
+          </div>
+        </header>
+
+        {/* Contenido según tab */}
+        <main className="flex-1 overflow-auto">
+
+          {/* ── HOY ── */}
+          {tab === 'hoy' && (
+            <div className="md:flex md:h-full">
+              {/* Columna izquierda: stats + turnos */}
+              <div className="md:w-80 md:border-r md:border-border/40 md:overflow-y-auto p-4 md:p-5">
+                <SeccionStats />
+                {/* Botón móvil orden de llegada */}
+                {ordenLlegada && (
+                  <button
+                    onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setModalNuevo(true) }}
+                    className="md:hidden flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 py-2.5 text-sm text-muted-foreground mb-4 hover:border-primary/40 hover:text-foreground transition-colors"
+                  >
+                    <Plus className="size-4" />Registrar por orden de llegada
+                  </button>
+                )}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Turnos de hoy</p>
+                <SeccionTurnosHoy />
+              </div>
+              {/* Columna derecha: próximo + agenda (solo desktop) */}
+              <div className="hidden md:block flex-1 overflow-y-auto p-5">
+                <SeccionProximo />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Próximos días</p>
+                <SeccionAgendaDias />
+              </div>
+              {/* Próximo en móvil (debajo de turnos) */}
+              <div className="md:hidden px-4 pb-4">
+                <SeccionProximo />
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="px-4 py-4 space-y-4">
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { val: turnos.length, label: 'Turnos',    color: 'text-foreground' },
-            { val: hechos,        label: 'Hechos',    color: 'text-green-400' },
-            { val: pendientes,    label: 'Pendiente', color: 'text-blue-400' },
-            { val: fmt(ingresos), label: 'Hoy',       color: 'text-primary' },
-          ].map(s => (
-            <div key={s.label} className="rounded-2xl border border-border/40 bg-card/40 p-3 text-center">
-              <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">{s.label}</p>
+          {/* ── AGENDA ── */}
+          {tab === 'agenda' && (
+            <div className="p-4 md:p-6 max-w-2xl">
+              <SeccionAgendaDias />
             </div>
-          ))}
-        </div>
+          )}
 
-        {/* Próximo turno */}
-        {proximo && (
-          <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 p-4">
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right">
-              <p className="text-3xl font-black tabular-nums text-foreground">{proximo.hora_inicio.slice(0,5)}</p>
-              <p className="text-xs font-medium text-primary">{tiempoHastaProximo}</p>
+          {/* ── STATS ── */}
+          {tab === 'stats' && (
+            <div className="p-4 md:p-6 max-w-2xl">
+              <StatsTab turnos={turnos} perfil={perfil} />
             </div>
-            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">Próximo</p>
-            <p className="max-w-[60%] truncate font-semibold">{proximo.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
-            <p className="max-w-[60%] truncate text-sm text-muted-foreground">{proximo.servicio.nombre_servicio}</p>
-          </div>
-        )}
+          )}
 
-        {/* Botón orden de llegada */}
-        {ordenLlegada && (
-          <button
-            onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setModalNuevo(true) }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-          >
-            <Plus className="size-4" />
-            Registrar turno por orden de llegada
-          </button>
-        )}
-
-        {/* Tabs */}
-        <div className={`grid rounded-2xl border border-border/40 bg-card/30 p-1`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-          {tabs.map(t => (
-            <button key={t} onClick={() => setTab(t as typeof tab)}
-              className={cn('rounded-xl py-2 text-xs font-medium transition-all', tab === t ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab: Hoy */}
-        {tab === 'hoy' && (
-          <div className="space-y-2">
-            {turnosOrdenados.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-center">
-                <Clock className="size-8 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Sin turnos para hoy</p>
-              </div>
-            ) : turnosOrdenados.map(t => {
-              const est = ESTADO[t.estado] ?? ESTADO.pendiente
-              const finalizado = ['atendido','cobrado','ausente','cancelado'].includes(t.estado)
-              return (
-                <div key={t.idagenda} className={cn('flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-4 py-3.5 transition-opacity', finalizado && 'opacity-40')}>
-                  <div className="shrink-0 text-center">
-                    <p className="text-sm font-bold tabular-nums">{t.hora_inicio.slice(0,5)}</p>
-                    <p className="text-[10px] text-muted-foreground">{t.hora_fin.slice(0,5)}</p>
-                  </div>
-                  <div className="mx-1 h-8 w-px bg-border/50 shrink-0" />
+          {/* ── CAJA ── */}
+          {tab === 'caja' && (
+            <div className="p-4 md:p-6 max-w-2xl space-y-2">
+              {turnosPendientesCobro.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
+              ) : turnosPendientesCobro.map(t => (
+                <div key={t.idagenda} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3.5">
                   <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio}</p>
+                    <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                    <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className={cn('size-2 rounded-full shrink-0', est.dot)} />
-                    {!finalizado && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-7 text-muted-foreground">
-                            <MoreVertical className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {t.estado === 'pendiente' && (
-                            <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
-                              <CheckCircle className="mr-2 size-4 text-yellow-400" />Confirmar
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
-                            <UserCheck className="mr-2 size-4 text-green-400" />Marcar atendido
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'ausente')}>
-                            <AlertCircle className="mr-2 size-4 text-orange-400" />Ausente
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => abrirCancelacion(t)} className="text-destructive">
-                            <XCircle className="mr-2 size-4" />Cancelar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Tab: Agenda */}
-        {tab === 'agenda' && (
-          <div className="space-y-4">
-            {proximosDias.map(d => (
-              <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} refreshKey={agendaRefreshKey} onCambiarEstado={cambiarEstado} onCancelar={abrirCancelacion} />
-            ))}
-          </div>
-        )}
-
-        {/* Tab: Stats */}
-        {tab === 'stats' && <StatsTab turnos={turnos} perfil={perfil} />}
-
-        {/* Tab: Caja */}
-        {tab === 'caja' && (
-          <div className="space-y-2">
-            {turnosPendientesCobro.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-center">
-                <DollarSign className="size-8 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
-              </div>
-            ) : turnosPendientesCobro.map(t => (
-              <div key={t.idagenda} className="flex items-center gap-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3.5">
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-semibold">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
-                  <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}</p>
-                </div>
-                <span className="shrink-0 font-bold text-primary">${Number(t.servicio.precio).toLocaleString('es-AR')}</span>
-                <Button size="sm" className="h-8 shrink-0 gap-1" onClick={() => abrirCobro(t)}>
-                  <DollarSign className="size-3" />Cobrar
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tab: Productos */}
-        {tab === 'productos' && (
-          <div className="space-y-3">
-            <button onClick={() => { setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setErrorVenta(''); setModalVenta(true) }}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
-              <Plus className="size-4" />Registrar venta
-            </button>
-            <div className="space-y-2">
-              {productosVenta.map(p => (
-                <div key={p.idproducto} className="flex items-center justify-between rounded-2xl border border-border/40 bg-card/40 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold">{p.nombre_producto}</p>
-                    <p className="text-xs text-muted-foreground">Stock: {p.stock_actual}</p>
-                  </div>
-                  <span className="font-bold text-primary">${Number(p.precio_venta).toLocaleString('es-AR')}</span>
+                  <span className="shrink-0 font-bold text-primary">${Number(t.servicio.precio).toLocaleString('es-AR')}</span>
+                  <Button size="sm" className="h-8 shrink-0 gap-1" onClick={() => abrirCobro(t)}>
+                    <DollarSign className="size-3" />Cobrar
+                  </Button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* ── PRODUCTOS ── */}
+          {tab === 'productos' && (
+            <div className="p-4 md:p-6 max-w-2xl space-y-3">
+              <button onClick={() => { setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setErrorVenta(''); setModalVenta(true) }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors">
+                <Plus className="size-4" />Registrar venta
+              </button>
+              <div className="space-y-2">
+                {productosVenta.map(p => (
+                  <div key={p.idproducto} className="flex items-center justify-between rounded-xl border border-border/40 bg-card/40 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">{p.nombre_producto}</p>
+                      <p className="text-xs text-muted-foreground">Stock: {p.stock_actual}</p>
+                    </div>
+                    <span className="font-bold text-primary">${Number(p.precio_venta).toLocaleString('es-AR')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
       </div>
+
+      {/* ── Bottom nav móvil ─────────────────────────────────────────────────── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex border-t border-border/40 bg-background/95 backdrop-blur-sm">
+        {visibleNav.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setTab(item.id)}
+            className={cn(
+              'flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors',
+              tab === item.id ? 'text-primary' : 'text-muted-foreground'
+            )}
+          >
+            {item.icon}
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
       {/* ── Modales ──────────────────────────────────────────────────────────── */}
 
-      {/* Cancelar */}
       <Dialog open={modalCancelar} onOpenChange={v => { if (!guardandoCancelacion) setModalCancelar(v) }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Cancelar turno</DialogTitle></DialogHeader>
@@ -421,7 +507,6 @@ export default function BarberoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Cobro */}
       <Dialog open={modalCobro} onOpenChange={setModalCobro}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Registrar cobro</DialogTitle></DialogHeader>
@@ -451,7 +536,6 @@ export default function BarberoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Venta producto */}
       <Dialog open={modalVenta} onOpenChange={setModalVenta}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Venta de producto</DialogTitle></DialogHeader>
@@ -498,7 +582,6 @@ export default function BarberoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Nuevo turno */}
       <Dialog open={modalNuevo} onOpenChange={setModalNuevo}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Nuevo Turno</DialogTitle></DialogHeader>
@@ -567,7 +650,7 @@ export default function BarberoPage() {
   )
 }
 
-// ── Subcomponente: día en pestaña Agenda ──────────────────────────────────────
+// ── AgendaDia ─────────────────────────────────────────────────────────────────
 
 function AgendaDia({
   fecha, label, refreshKey,
@@ -587,33 +670,33 @@ function AgendaDia({
   useEffect(() => { recargar() }, [recargar, refreshKey])
 
   const accion = async (id: number, estado: string) => { await onCambiarEstado(id, estado); recargar() }
-  const cancelar = (t: Turno) => { onCancelar(t); /* caller must reload after modal */ }
 
   return (
     <div>
-      <p className="mb-2 text-sm font-bold text-muted-foreground">{label}</p>
+      <p className="mb-2 text-sm font-semibold">{label}</p>
       {turnos === null ? (
         <p className="text-xs text-muted-foreground">Cargando...</p>
       ) : turnos.length === 0 ? (
-        <p className="rounded-2xl border border-border/30 bg-card/20 py-3 text-center text-xs text-muted-foreground">Sin turnos</p>
+        <p className="rounded-xl border border-border/30 bg-card/20 py-3 text-center text-xs text-muted-foreground">Sin turnos</p>
       ) : (
         <div className="space-y-2">
           {turnos.map(t => {
             const est = ESTADO[t.estado] ?? ESTADO.pendiente
             const finalizado = ['atendido','cobrado','ausente','cancelado'].includes(t.estado)
             return (
-              <div key={t.idagenda} className={cn('flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-4 py-3 transition-opacity', finalizado && 'opacity-40')}>
-                <div className="shrink-0 text-center">
+              <div key={t.idagenda} className={cn('flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 px-3 py-3 transition-opacity', finalizado && 'opacity-40')}>
+                <div className="shrink-0 w-10 text-center">
                   <p className="text-sm font-bold tabular-nums">{t.hora_inicio.slice(0,5)}</p>
-                  <p className="text-[10px] text-muted-foreground">{t.hora_fin.slice(0,5)}</p>
+                  <p className="text-[9px] text-muted-foreground">{t.hora_fin.slice(0,5)}</p>
                 </div>
-                <div className="mx-1 h-7 w-px bg-border/50 shrink-0" />
+                <div className="w-px h-7 bg-border/50 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-semibold">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                  <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
                   <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio}</p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className={cn('text-xs font-medium', est.text)}>{est.label}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={cn('text-xs hidden sm:inline', est.text)}>{est.label}</span>
+                  <div className={cn('size-2 rounded-full', est.dot)} />
                   {!finalizado && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -631,7 +714,7 @@ function AgendaDia({
                           <UserCheck className="mr-2 size-4 text-green-400" />Marcar atendido
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => cancelar(t)} className="text-destructive">
+                        <DropdownMenuItem onClick={() => onCancelar(t)} className="text-destructive">
                           <XCircle className="mr-2 size-4" />Cancelar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -647,7 +730,7 @@ function AgendaDia({
   )
 }
 
-// ── Subcomponente: Stats ──────────────────────────────────────────────────────
+// ── StatsTab ──────────────────────────────────────────────────────────────────
 
 function StatsTab({ turnos, perfil }: { turnos: Turno[]; perfil: Perfil | null }) {
   const atendidos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
@@ -670,14 +753,14 @@ function StatsTab({ turnos, perfil }: { turnos: Turno[]; perfil: Perfil | null }
           { icon: <Star className="size-4 text-yellow-400 fill-yellow-400" />, val: Number(perfil?.rating_promedio ?? 0).toFixed(1), label: 'Calificación', color: 'text-yellow-400' },
           { icon: <AlertCircle className="size-4 text-orange-400" />, val: ausentes, label: 'Ausencias', color: 'text-orange-400' },
         ].map(s => (
-          <div key={s.label} className="rounded-2xl border border-border/40 bg-card/40 p-4">
+          <div key={s.label} className="rounded-xl border border-border/40 bg-card/40 p-4">
             <div className="mb-2 flex items-center gap-1.5">{s.icon}<p className="text-xs text-muted-foreground">{s.label}</p></div>
             <p className={`text-3xl font-black ${s.color}`}>{s.val}</p>
           </div>
         ))}
       </div>
       {serviciosOrden.length > 0 && (
-        <div className="rounded-2xl border border-border/40 bg-card/40 p-4 space-y-4">
+        <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-4">
           <p className="text-sm font-bold">Servicios realizados</p>
           {serviciosOrden.map(([nombre, count]) => (
             <div key={nombre}>
