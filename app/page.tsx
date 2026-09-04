@@ -539,38 +539,41 @@ export default function Landing() {
 
             {/* Estado comprimido */}
             {!galeriaExpandida && (
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-center">
-                  <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
-                  <p className="mt-1.5 text-sm text-muted-foreground">{galeriaImages.length} fotos de nuestros cortes y el equipo</p>
+              <div className="space-y-5">
+                {/* Header igual al estilo de referencia */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black tracking-tight">Nuestro trabajo</h2>
+                  <button
+                    onClick={() => setGaleriaExpandida(true)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:opacity-80 transition-opacity"
+                  >
+                    Ver {galeriaImages.length} fotos <ChevronDown className="size-4" />
+                  </button>
                 </div>
 
-                {/* Fan de fotos comprimidas */}
-                <div className="relative flex items-center justify-center h-40" style={{ width: `${Math.min(galeriaImages.length, 7) * 52 + 80}px`, maxWidth: '100%' }}>
-                  {galeriaImages.slice(0, 7).map((img, i) => {
-                    const total = Math.min(galeriaImages.length, 7)
-                    const mid = (total - 1) / 2
-                    const offset = (i - mid) * 48
-                    const rotate = (i - mid) * 4
+                {/* Stack de fotos — la primera centrada, las demás sobresaliendo */}
+                <div className="relative w-full overflow-hidden" style={{ height: '220px' }}>
+                  {galeriaImages.slice(0, Math.min(galeriaImages.length, 5)).map((img, i) => {
+                    const offsets = [0, 200, -200, 340, -340]
+                    const scales  = [1, 0.88, 0.88, 0.76, 0.76]
+                    const zIndex  = 10 - i
                     return (
                       <div
                         key={img.idimagen}
-                        className="absolute size-28 overflow-hidden rounded-xl border-2 border-background shadow-lg transition-all duration-300 hover:scale-110 hover:z-50"
-                        style={{ transform: `translateX(${offset}px) rotate(${rotate}deg)`, zIndex: i }}
+                        className="absolute top-1/2 left-1/2 overflow-hidden rounded-2xl border border-white/10 shadow-xl transition-all duration-300 hover:scale-105 hover:z-50"
+                        style={{
+                          width: '180px',
+                          height: '180px',
+                          transform: `translate(-50%, -50%) translateX(${offsets[i]}px) scale(${scales[i]})`,
+                          zIndex,
+                          opacity: 1 - i * 0.06,
+                        }}
                       >
                         <img src={img.url} alt="" className="h-full w-full object-cover" />
                       </div>
                     )
                   })}
                 </div>
-
-                <button
-                  onClick={() => setGaleriaExpandida(true)}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold hover:border-primary hover:text-primary transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <Images className="size-4" /> Ver todas las fotos
-                  <ChevronDown className="size-4" />
-                </button>
               </div>
             )}
 
