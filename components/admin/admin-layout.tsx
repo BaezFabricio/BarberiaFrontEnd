@@ -18,6 +18,7 @@ import {
   User,
   ShoppingBag,
   CreditCard,
+  DollarSign,
   Store,
   Globe,
   Menu
@@ -74,6 +75,7 @@ const menuItems = [
     title: 'Finanzas',
     items: [
       { title: 'Pagos y Ventas', href: '/admin/pagos', icon: CreditCard },
+      { title: 'Comisiones', href: '/admin/comisiones', icon: DollarSign },
       { title: 'Gastos', href: '/admin/gastos', icon: Receipt },
       { title: 'Reportes', href: '/admin/reportes', icon: BarChart3 },
     ]
