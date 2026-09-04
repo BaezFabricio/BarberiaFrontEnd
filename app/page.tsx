@@ -537,73 +537,74 @@ export default function Landing() {
         <section className="py-16 bg-card/30">
           <div className="container mx-auto px-4 max-w-5xl">
 
-            {/* Estado comprimido */}
+            {/* Header siempre visible */}
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted border border-border">
+                  <Images className="size-4 text-primary" />
+                </div>
+                <h2 className="text-lg font-bold tracking-tight">Nuestro trabajo</h2>
+              </div>
+              <button
+                onClick={() => setGaleriaExpandida(e => !e)}
+                className="flex items-center justify-center size-8 text-primary hover:opacity-70 transition-opacity"
+                aria-label={galeriaExpandida ? 'Ver menos' : 'Ver fotos'}
+              >
+                <ChevronDown className={`size-5 transition-transform duration-350 ${galeriaExpandida ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            {/* Abanico — comprimido */}
             {!galeriaExpandida && (
-              <div className="flex flex-col sm:flex-row items-center gap-8">
-
-                {/* Stack vertical de fotos */}
-                <div
-                  className="relative shrink-0 cursor-pointer"
-                  style={{ width: '260px', height: `${160 + Math.min(galeriaImages.length - 1, 4) * 18}px` }}
-                  onClick={() => setGaleriaExpandida(true)}
-                >
-                  {galeriaImages.slice(0, 5).map((img, i) => {
-                    const total = Math.min(galeriaImages.length, 5)
-                    const fromTop = (total - 1 - i) * 18
-                    return (
-                      <div
-                        key={img.idimagen}
-                        className="absolute overflow-hidden rounded-2xl shadow-lg border border-white/10 transition-transform duration-300 hover:scale-[1.02]"
-                        style={{
-                          width: '260px',
-                          height: '160px',
-                          top: `${fromTop}px`,
-                          zIndex: i + 1,
-                        }}
-                      >
-                        <img src={img.url} alt="" className="h-full w-full object-cover" />
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Texto y botón */}
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <h2 className="text-2xl font-black tracking-tight">Nuestro trabajo</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{galeriaImages.length} fotos de cortes y el local</p>
-                  </div>
-                  <button
-                    onClick={() => setGaleriaExpandida(true)}
-                    className="inline-flex items-center gap-2 self-start rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold hover:border-primary hover:text-primary transition-all duration-200"
-                  >
-                    Ver {galeriaImages.length} fotos más <ChevronDown className="size-4" />
-                  </button>
-                </div>
+              <div
+                className="relative mx-auto cursor-pointer"
+                style={{ height: '290px', width: '100%', maxWidth: '500px' }}
+                onClick={() => setGaleriaExpandida(true)}
+              >
+                {galeriaImages.slice(0, 5).map((img, i) => {
+                  const rotations = [-28, -14, 0, 14, 28]
+                  const translateX = [-80, -40, 0, 40, 80]
+                  return (
+                    <div
+                      key={img.idimagen}
+                      className="absolute overflow-hidden rounded-2xl border border-white/10 shadow-2xl"
+                      style={{
+                        width: '130px',
+                        height: '190px',
+                        bottom: 0,
+                        left: '50%',
+                        transformOrigin: 'bottom center',
+                        transform: `translateX(calc(-50% + ${translateX[i]}px)) rotate(${rotations[i]}deg)`,
+                        zIndex: i === 2 ? 5 : i < 2 ? i + 1 : 5 - i,
+                        transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)',
+                      }}
+                    >
+                      <img src={img.url} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  )
+                })}
               </div>
             )}
 
-            {/* Estado expandido con animación */}
+            {/* Tira horizontal — expandido */}
             {galeriaExpandida && (
-              <div>
-                <div className="mb-8 flex items-end justify-between">
-                  <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
-                  <button
-                    onClick={() => setGaleriaExpandida(false)}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 transition-all"
-                  >
-                    Ver menos <ChevronDown className="size-4 rotate-180" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div
+                className="overflow-x-auto pb-3"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--primary)) transparent' }}
+              >
+                <div className="flex gap-2.5" style={{ width: 'max-content' }}>
                   {galeriaImages.map((img, i) => (
                     <div
                       key={img.idimagen}
-                      className="group relative aspect-square overflow-hidden rounded-2xl bg-muted"
-                      style={{ animation: `fadeSlideUp 0.4s ease both`, animationDelay: `${i * 50}ms` }}
+                      className="shrink-0 overflow-hidden rounded-2xl border border-white/[0.07] group"
+                      style={{
+                        width: '160px',
+                        height: '210px',
+                        animation: `slideInH 0.4s cubic-bezier(.4,0,.2,1) both`,
+                        animationDelay: `${i * 55}ms`,
+                      }}
                     >
-                      <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
+                      <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-400 group-hover:scale-105" />
                     </div>
                   ))}
                 </div>
@@ -614,9 +615,9 @@ export default function Landing() {
       )}
 
       <style>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @keyframes slideInH {
+          from { opacity: 0; transform: translateX(28px) scale(.95); }
+          to   { opacity: 1; transform: translateX(0) scale(1); }
         }
       `}</style>
 
