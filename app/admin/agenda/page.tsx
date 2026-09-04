@@ -339,8 +339,12 @@ export default function AgendaPage() {
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
-                  {horariosDisponibles.map(hora => {
-                    const aptsHora = getAppointmentsForDate(selectedDate).filter(t => t.hora_inicio.slice(0, 5) === hora)
+                  {horariosDisponibles.map((hora, horaIdx) => {
+                    const nextHora = horariosDisponibles[horaIdx + 1] ?? '23:59'
+                    const aptsHora = getAppointmentsForDate(selectedDate).filter(t => {
+                      const h = t.hora_inicio.slice(0, 5)
+                      return h >= hora && h < nextHora
+                    })
                     return (
                       <div key={hora} className="flex gap-4 border-b border-border/50 pb-2">
                         <div className="w-16 shrink-0 pt-2 text-sm text-muted-foreground">{hora}</div>
