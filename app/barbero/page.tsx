@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Badge } from '@/components/ui/badge'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronRight, Plus, CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone, CreditCard, LayoutDashboard } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
+import { CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone, CreditCard, LayoutDashboard, Plus, ChevronRight, Star, TrendingUp, Clock, UserCheck, MoreVertical } from 'lucide-react'
 import { api } from '@/lib/api'
+import { cn } from '@/lib/utils'
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 type Turno = {
   idagenda: number; fecha: string; hora_inicio: string; hora_fin: string; estado: string
@@ -27,60 +29,77 @@ type TurnoPendienteCobro = {
 }
 type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number }
 
-const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
-  pendiente:  { label: 'Reservado',  className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  confirmado: { label: 'Confirmado', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  atendido:   { label: 'Atendido · Falta cobrar', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  cobrado:    { label: 'Atendido · Cobrado',      className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  ausente:    { label: 'Ausente',                 className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  cancelado:  { label: 'Cancelado',  className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+// ── Constantes ────────────────────────────────────────────────────────────────
+
+const ESTADO: Record<string, { label: string; dot: string; text: string }> = {
+  pendiente:  { label: 'Reservado',             dot: 'bg-blue-400',   text: 'text-blue-400' },
+  confirmado: { label: 'Confirmado',             dot: 'bg-yellow-400', text: 'text-yellow-400' },
+  atendido:   { label: 'Falta cobrar',           dot: 'bg-orange-400', text: 'text-orange-400' },
+  cobrado:    { label: 'Cobrado',                dot: 'bg-green-400',  text: 'text-green-400' },
+  ausente:    { label: 'Ausente',                dot: 'bg-orange-500', text: 'text-orange-500' },
+  cancelado:  { label: 'Cancelado',              dot: 'bg-red-400',    text: 'text-red-400' },
 }
 
 const HORAS = Array.from({ length: 24 }, (_, h) =>
   ['00','15','30','45'].map(m => `${String(h).padStart(2,'0')}:${m}`)
 ).flat()
 
-const DIAS_FULL = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+const FORM0 = { nombre_cliente: '', telefono_cliente: '', idservicio: '', hora_inicio: '', fecha: '' }
 
-const FORM_VACIO = { nombre_cliente: '', telefono_cliente: '', idservicio: '', hora_inicio: '', fecha: '' }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const fmt = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${n}`
+const hoyStr = () => new Date().toISOString().split('T')[0]
+const initials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+// ── Página principal ──────────────────────────────────────────────────────────
 
 export default function BarberoPage() {
   const hoy = new Date()
-  const hoyStr = hoy.toISOString().split('T')[0]
-  const [turnos, setTurnos] = useState<Turno[]>([])
-  const [perfil, setPerfil] = useState<Perfil | null>(null)
+  const [turnos, setTurnos]       = useState<Turno[]>([])
+  const [perfil, setPerfil]       = useState<Perfil | null>(null)
   const [servicios, setServicios] = useState<Servicio[]>([])
-  const [tab, setTab] = useState<'hoy' | 'agenda' | 'stats' | 'caja' | 'productos'>('hoy')
-  const [turnosPendientesCobro, setTurnosPendientesCobro] = useState<TurnoPendienteCobro[]>([])
-  const [modalCobro, setModalCobro] = useState(false)
-  const [turnoACobrar, setTurnoACobrar] = useState<TurnoPendienteCobro | null>(null)
-  const [montoCobro, setMontoCobro] = useState('')
-  const [metodoCobro, setMetodoCobro] = useState('efectivo')
-  const [guardandoCobro, setGuardandoCobro] = useState(false)
-  const [errorCobro, setErrorCobro] = useState('')
-
-  // Venta productos
-  const [productosVenta, setProductosVenta] = useState<ProductoVenta[]>([])
-  const [modalVenta, setModalVenta] = useState(false)
-  const [formVenta, setFormVenta] = useState({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
-  const [guardandoVenta, setGuardandoVenta] = useState(false)
-  const [errorVenta, setErrorVenta] = useState('')
+  const [tab, setTab]             = useState<'hoy' | 'agenda' | 'stats' | 'caja' | 'productos'>('hoy')
   const [ordenLlegada, setOrdenLlegada] = useState(true)
-  const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ ...FORM_VACIO, fecha: hoyStr })
-  const [guardando, setGuardando] = useState(false)
-  const [error, setError] = useState('')
-  const [turnosDia, setTurnosDia] = useState<Turno[]>([])
 
-  // Cancelación con motivo
-  const [modalCancelar, setModalCancelar] = useState(false)
-  const [turnoCancelar, setTurnoCancelar] = useState<Turno | null>(null)
-  const [motivoCancelacion, setMotivoCancelacion] = useState('')
+  const [turnosPendientesCobro, setTurnosPendientesCobro] = useState<TurnoPendienteCobro[]>([])
+  const [productosVenta, setProductosVenta] = useState<ProductoVenta[]>([])
+
+  // Modales
+  const [modalNuevo,   setModalNuevo]   = useState(false)
+  const [modalCancelar,setModalCancelar]= useState(false)
+  const [modalCobro,   setModalCobro]   = useState(false)
+  const [modalVenta,   setModalVenta]   = useState(false)
+
+  const [form, setForm] = useState({ ...FORM0, fecha: hoyStr() })
+  const [turnosDia, setTurnosDia] = useState<Turno[]>([])
+  const [guardando, setGuardando] = useState(false)
+  const [error,     setError]     = useState('')
+
+  const [turnoCancelar,      setTurnoCancelar]      = useState<Turno | null>(null)
+  const [motivoCancelacion,  setMotivoCancelacion]  = useState('')
   const [guardandoCancelacion, setGuardandoCancelacion] = useState(false)
 
+  const [turnoACobrar, setTurnoACobrar] = useState<TurnoPendienteCobro | null>(null)
+  const [montoCobro,   setMontoCobro]   = useState('')
+  const [metodoCobro,  setMetodoCobro]  = useState('efectivo')
+  const [guardandoCobro, setGuardandoCobro] = useState(false)
+  const [errorCobro,     setErrorCobro]     = useState('')
+
+  const [formVenta,       setFormVenta]       = useState({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' })
+  const [guardandoVenta,  setGuardandoVenta]  = useState(false)
+  const [errorVenta,      setErrorVenta]      = useState('')
+
+  const recargar = useCallback(() =>
+    api.get<Turno[]>(`/turnos?fecha=${hoyStr()}`).then(setTurnos).catch(() => {}), [])
+
+  const cargarPendientesCobro = () =>
+    api.get<TurnoPendienteCobro[]>('/pagos/turnos-pendientes').then(setTurnosPendientesCobro).catch(() => {})
+
   useEffect(() => {
-    api.get<Turno[]>(`/turnos?fecha=${hoyStr}`).then(setTurnos).catch(() => {})
+    recargar()
     api.get<Perfil>('/mi-perfil').then(p => {
       setPerfil(p)
       if (p.puede_cobrar) cargarPendientesCobro()
@@ -88,9 +107,12 @@ export default function BarberoPage() {
     }).catch(() => {})
     api.get<Servicio[]>('/servicios').then(setServicios).catch(() => {})
     api.get<ConfigBarberia>('/mi-barberia').then(d => setOrdenLlegada(d.orden_llegada ?? true)).catch(() => {})
-  }, [])
+  }, [recargar])
 
-  const recargar = () => api.get<Turno[]>(`/turnos?fecha=${hoyStr}`).then(setTurnos).catch(() => {})
+  const cambiarEstado = async (id: number, estado: string) => {
+    await api.patch(`/turnos/${id}/estado`, { estado })
+    recargar()
+  }
 
   const abrirCancelacion = (t: Turno) => { setTurnoCancelar(t); setMotivoCancelacion(''); setModalCancelar(true) }
   const confirmarCancelacion = async () => {
@@ -102,17 +124,6 @@ export default function BarberoPage() {
     } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error al cancelar') }
     finally { setGuardandoCancelacion(false) }
   }
-  const cargarPendientesCobro = () => api.get<TurnoPendienteCobro[]>('/pagos/turnos-pendientes').then(setTurnosPendientesCobro).catch(() => {})
-
-  const cambiarEstado = async (id: number, estado: string) => {
-    await api.patch(`/turnos/${id}/estado`, { estado })
-    recargar()
-  }
-
-  const cargarTurnosDia = (fecha: string) =>
-    api.get<Turno[]>(`/turnos?fecha=${fecha}`)
-      .then(t => setTurnosDia(t.filter(x => x.estado !== 'cancelado' && x.estado !== 'archivado')))
-      .catch(() => setTurnosDia([]))
 
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault(); setError('')
@@ -125,10 +136,9 @@ export default function BarberoPage() {
     setGuardando(true)
     try {
       await api.post('/turnos', { ...form, idservicio: Number(form.idservicio), hora_fin, tipo_alta: 'orden_de_llegada' })
-      setModal(false); setForm({ ...FORM_VACIO, fecha: hoyStr }); recargar()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al guardar.')
-    } finally { setGuardando(false) }
+      setModalNuevo(false); setForm({ ...FORM0, fecha: hoyStr() }); recargar()
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Error al guardar.') }
+    finally { setGuardando(false) }
   }
 
   const registrarVentaBarbero = async () => {
@@ -144,7 +154,6 @@ export default function BarberoPage() {
   const abrirCobro = (t: TurnoPendienteCobro) => {
     setTurnoACobrar(t); setMontoCobro(String(t.servicio.precio)); setMetodoCobro('efectivo'); setErrorCobro(''); setModalCobro(true)
   }
-
   const registrarCobro = async () => {
     if (!turnoACobrar) return
     setGuardandoCobro(true); setErrorCobro('')
@@ -156,93 +165,102 @@ export default function BarberoPage() {
   }
 
   const turnosOrdenados = [...turnos].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
-  const activos = turnosOrdenados.filter(t => t.estado !== 'atendido' && t.estado !== 'cobrado' && t.estado !== 'cancelado' && t.estado !== 'ausente')
-  const proximo = activos[0]
-
-  const hechos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
-  const pendientes = turnos.filter(t => t.estado === 'pendiente' || t.estado === 'confirmado').length
-  const ingresos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
-  const fmt = (n: number) => n >= 1000 ? `$${(n/1000).toFixed(1)}k` : `$${n}`
-
-  // Próximos 5 días para la pestaña Agenda
-  const proximosDias = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() + i + 1)
-    return { fecha: d.toISOString().split('T')[0], label: `${DIAS_FULL[d.getDay()]} ${d.getDate()}` }
-  })
+  const activos   = turnosOrdenados.filter(t => !['atendido','cobrado','cancelado','ausente'].includes(t.estado))
+  const proximo   = activos[0]
+  const hechos    = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
+  const pendientes= turnos.filter(t => t.estado === 'pendiente' || t.estado === 'confirmado').length
+  const ingresos  = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
 
   const tiempoHastaProximo = proximo ? (() => {
     const [ph, pm] = proximo.hora_inicio.split(':').map(Number)
-    const ahora = new Date()
-    const diff = (ph * 60 + pm) - (ahora.getHours() * 60 + ahora.getMinutes())
+    const diff = (ph * 60 + pm) - (hoy.getHours() * 60 + hoy.getMinutes())
     if (diff <= 0) return 'Ahora'
     if (diff < 60) return `${diff} min`
-    return `${Math.floor(diff/60)}h ${diff%60}min`
+    return `${Math.floor(diff/60)}h ${diff % 60 > 0 ? ` ${diff % 60}min` : ''}`
   })() : null
 
-  const fechaLabel = `${DIAS_FULL[hoy.getDay()]}, ${hoy.getDate()} De ${MESES[hoy.getMonth()]}`
+  const isOwnerOrAdmin = (() => {
+    try { const p = JSON.parse(atob(localStorage.getItem('token')!.split('.')[1])); return p.rol === 'owner' || p.rol === 'admin' } catch { return false }
+  })()
+
+  const tabs = ['hoy', 'agenda', 'stats', ...(perfil?.puede_cobrar ? ['caja'] : []), ...(perfil?.puede_vender ? ['productos'] : [])]
+  const TAB_LABELS: Record<string, string> = { hoy: 'Hoy', agenda: 'Agenda', stats: 'Stats', caja: 'Caja', productos: 'Productos' }
+
+  const proximosDias = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i + 1)
+    return { fecha: d.toISOString().split('T')[0], label: `${DIAS[d.getDay()]} ${d.getDate()}` }
+  })
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="px-4 py-5">
-        {/* Volver al admin (solo owner) */}
-        {(() => { try { const p = JSON.parse(atob(localStorage.getItem('token')!.split('.')[1])); return p.rol === 'owner' || p.rol === 'admin' } catch { return false } })() && (
-          <a href="/admin" className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+    <div className="min-h-screen bg-background">
+
+      {/* Header */}
+      <div className="border-b border-border/40 bg-card/30 px-4 pb-4 pt-5">
+        {isOwnerOrAdmin && (
+          <a href="/admin" className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit">
             <LayoutDashboard className="size-3.5" />
-            Volver al panel de administración
+            Panel de administración
           </a>
         )}
-
-        {/* Saludo */}
-        <div className="mb-5 flex items-center gap-3">
-          <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-primary/10">
-            {perfil?.foto_url
-              ? <img src={perfil.foto_url} alt={perfil.nombre_completo} className="size-12 object-cover" />
-              : <span className="flex h-full items-center justify-center text-sm font-bold text-primary">
-                  {perfil?.nombre_completo.split(' ').map(x => x[0]).join('').slice(0,2).toUpperCase() ?? '..'}
-                </span>
-            }
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative size-11 shrink-0 overflow-hidden rounded-full bg-primary/20 ring-2 ring-primary/30">
+              {perfil?.foto_url
+                ? <img src={perfil.foto_url} alt="" className="size-11 object-cover" />
+                : <span className="flex h-full items-center justify-center text-sm font-bold text-primary">
+                    {perfil ? initials(perfil.nombre_completo) : '..'}
+                  </span>
+              }
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{DIAS[hoy.getDay()]}, {hoy.getDate()} de {MESES[hoy.getMonth()]}</p>
+              <h1 className="text-xl font-bold leading-tight">Hola, {perfil?.nombre_completo.split(' ')[0] ?? '...'}</h1>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Hola, {perfil?.nombre_completo.split(' ')[0] ?? '...'}</h1>
-            <p className="text-sm text-muted-foreground">{fechaLabel}</p>
-          </div>
+          {perfil?.rating_promedio > 0 && (
+            <div className="flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1">
+              <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm font-bold text-yellow-400">{Number(perfil.rating_promedio).toFixed(1)}</span>
+            </div>
+          )}
         </div>
+      </div>
+
+      <div className="px-4 py-4 space-y-4">
 
         {/* Stats */}
-        <div className="mb-4 grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {[
-            { val: turnos.length, label: 'TURNOS', color: 'text-foreground' },
-            { val: hechos, label: 'HECHOS', color: 'text-green-400' },
-            { val: pendientes, label: 'PENDIENTES', color: 'text-blue-400' },
-            { val: fmt(ingresos), label: 'HOY', color: 'text-yellow-400' },
+            { val: turnos.length, label: 'Turnos',    color: 'text-foreground' },
+            { val: hechos,        label: 'Hechos',    color: 'text-green-400' },
+            { val: pendientes,    label: 'Pendiente', color: 'text-blue-400' },
+            { val: fmt(ingresos), label: 'Hoy',       color: 'text-primary' },
           ].map(s => (
-            <div key={s.label} className="rounded-xl border border-border/50 bg-card/30 p-4 text-center">
-              <p className={`text-2xl font-bold ${s.color}`}>{s.val}</p>
-              <p className="text-[10px] tracking-widest text-muted-foreground mt-1">{s.label}</p>
+            <div key={s.label} className="rounded-2xl border border-border/40 bg-card/40 p-3 text-center">
+              <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Próximo turno */}
         {proximo && (
-          <div className="mb-4 flex items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-            <div className="flex-1 min-w-0">
-              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-widest text-primary">Próximo turno</p>
-              <p className="truncate font-semibold">{proximo.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
-              <p className="truncate text-sm text-muted-foreground">{proximo.servicio.nombre_servicio}</p>
+          <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 p-4">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-right">
+              <p className="text-3xl font-black tabular-nums text-foreground">{proximo.hora_inicio.slice(0,5)}</p>
+              <p className="text-xs font-medium text-primary">{tiempoHastaProximo}</p>
             </div>
-            <div className="shrink-0 text-right">
-              <p className="text-2xl font-bold">{proximo.hora_inicio.slice(0,5)}</p>
-              <p className="text-xs text-primary/70">{tiempoHastaProximo}</p>
-            </div>
+            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">Próximo</p>
+            <p className="max-w-[60%] truncate font-semibold">{proximo.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+            <p className="max-w-[60%] truncate text-sm text-muted-foreground">{proximo.servicio.nombre_servicio}</p>
           </div>
         )}
 
-        {/* Botón registrar orden de llegada */}
+        {/* Botón orden de llegada */}
         {ordenLlegada && (
           <button
-            onClick={() => { setForm({ ...FORM_VACIO, fecha: hoyStr }); setError(''); cargarTurnosDia(hoyStr); setModal(true) }}
-            className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/20 py-3 text-sm text-muted-foreground transition-colors hover:bg-card/40"
+            onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setModalNuevo(true) }}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
           >
             <Plus className="size-4" />
             Registrar turno por orden de llegada
@@ -250,63 +268,66 @@ export default function BarberoPage() {
         )}
 
         {/* Tabs */}
-        {(() => {
-          const tabs = ['hoy', 'agenda', 'stats', ...(perfil?.puede_cobrar ? ['caja'] : []), ...(perfil?.puede_vender ? ['productos'] : [])]
-          return (
-            <div className={`mb-4 grid rounded-xl border border-border/50 bg-card/20 p-1`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-              {tabs.map(t => (
-                <button key={t} onClick={() => setTab(t as typeof tab)}
-                  className={`rounded-lg py-2 text-xs sm:text-sm transition-colors ${tab === t ? 'bg-card font-semibold text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                  {t === 'hoy' ? 'Hoy' : t === 'agenda' ? 'Agenda' : t === 'stats' ? 'Stats' : t === 'caja' ? '💰 Caja' : '📦 Productos'}
-                </button>
-              ))}
-            </div>
-          )
-        })()}
+        <div className={`grid rounded-2xl border border-border/40 bg-card/30 p-1`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+          {tabs.map(t => (
+            <button key={t} onClick={() => setTab(t as typeof tab)}
+              className={cn('rounded-xl py-2 text-xs font-medium transition-all', tab === t ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+              {TAB_LABELS[t]}
+            </button>
+          ))}
+        </div>
 
         {/* Tab: Hoy */}
         {tab === 'hoy' && (
           <div className="space-y-2">
             {turnosOrdenados.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No hay turnos para hoy</p>
+              <div className="flex flex-col items-center gap-2 py-12 text-center">
+                <Clock className="size-8 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Sin turnos para hoy</p>
+              </div>
             ) : turnosOrdenados.map(t => {
-              const est = ESTADO_BADGE[t.estado] ?? ESTADO_BADGE.pendiente
-              const finalizado = t.estado === 'atendido' || t.estado === 'cobrado' || t.estado === 'ausente' || t.estado === 'cancelado'
+              const est = ESTADO[t.estado] ?? ESTADO.pendiente
+              const finalizado = ['atendido','cobrado','ausente','cancelado'].includes(t.estado)
               return (
-                <div key={t.idagenda} className={`flex items-center gap-3 rounded-xl border border-border/30 bg-card/20 px-4 py-3 ${finalizado ? 'opacity-50' : ''}`}>
-                  <div className="w-12 shrink-0">
-                    <span className="text-sm font-bold">{t.hora_inicio.slice(0,5)}</span>
+                <div key={t.idagenda} className={cn('flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-4 py-3.5 transition-opacity', finalizado && 'opacity-40')}>
+                  <div className="shrink-0 text-center">
+                    <p className="text-sm font-bold tabular-nums">{t.hora_inicio.slice(0,5)}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.hora_fin.slice(0,5)}</p>
                   </div>
+                  <div className="mx-1 h-8 w-px bg-border/50 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                    <p className="truncate text-sm font-semibold">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
                     <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio}</p>
                   </div>
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${est.className}`}>{est.label}</span>
-                  {!finalizado && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground">
-                          <ChevronRight className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {t.estado === 'pendiente' && (
-                          <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
-                            <CheckCircle className="mr-2 size-4 text-green-500" />Confirmar
+                  <div className="flex items-center gap-1">
+                    <div className={cn('size-2 rounded-full shrink-0', est.dot)} />
+                    {!finalizado && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-7 text-muted-foreground">
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {t.estado === 'pendiente' && (
+                            <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
+                              <CheckCircle className="mr-2 size-4 text-yellow-400" />Confirmar
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                            <UserCheck className="mr-2 size-4 text-green-400" />Marcar atendido
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
-                          <CheckCircle className="mr-2 size-4 text-primary" />Marcar atendido
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'ausente')}>
-                          <AlertCircle className="mr-2 size-4 text-orange-400" />Ausente
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => abrirCancelacion(t)} className="text-destructive">
-                          <XCircle className="mr-2 size-4" />Cancelar turno
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                          <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'ausente')}>
+                            <AlertCircle className="mr-2 size-4 text-orange-400" />Ausente
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => abrirCancelacion(t)} className="text-destructive">
+                            <XCircle className="mr-2 size-4" />Cancelar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -315,51 +336,51 @@ export default function BarberoPage() {
 
         {/* Tab: Agenda */}
         {tab === 'agenda' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {proximosDias.map(d => (
-              <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} />
+              <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} onCambiarEstado={cambiarEstado} onCancelar={abrirCancelacion} />
             ))}
           </div>
         )}
 
         {/* Tab: Stats */}
-        {tab === 'stats' && (
-          <StatsTab turnos={turnos} perfil={perfil} />
-        )}
+        {tab === 'stats' && <StatsTab turnos={turnos} perfil={perfil} />}
 
         {/* Tab: Caja */}
         {tab === 'caja' && (
           <div className="space-y-2">
             {turnosPendientesCobro.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No hay turnos pendientes de cobro</p>
+              <div className="flex flex-col items-center gap-2 py-12 text-center">
+                <DollarSign className="size-8 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
+              </div>
             ) : turnosPendientesCobro.map(t => (
-              <div key={t.idagenda} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
+              <div key={t.idagenda} className="flex items-center gap-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3.5">
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                  <p className="truncate text-sm font-semibold">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
                   <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}</p>
                 </div>
-                <span className="shrink-0 text-sm font-bold text-yellow-500">${Number(t.servicio.precio).toLocaleString('es-AR')}</span>
-                <Button size="sm" className="shrink-0 h-8 gap-1" onClick={() => abrirCobro(t)}>
+                <span className="shrink-0 font-bold text-primary">${Number(t.servicio.precio).toLocaleString('es-AR')}</span>
+                <Button size="sm" className="h-8 shrink-0 gap-1" onClick={() => abrirCobro(t)}>
                   <DollarSign className="size-3" />Cobrar
                 </Button>
               </div>
             ))}
           </div>
         )}
-      </div>
 
         {/* Tab: Productos */}
         {tab === 'productos' && (
           <div className="space-y-3">
             <button onClick={() => { setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setErrorVenta(''); setModalVenta(true) }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/20 py-3 text-sm text-muted-foreground hover:bg-card/40 transition-colors">
-              <Plus className="size-4" />Registrar venta de producto
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+              <Plus className="size-4" />Registrar venta
             </button>
             <div className="space-y-2">
               {productosVenta.map(p => (
-                <div key={p.idproducto} className="flex items-center justify-between rounded-xl border border-border/30 bg-card/20 px-4 py-3">
+                <div key={p.idproducto} className="flex items-center justify-between rounded-2xl border border-border/40 bg-card/40 px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium">{p.nombre_producto}</p>
+                    <p className="text-sm font-semibold">{p.nombre_producto}</p>
                     <p className="text-xs text-muted-foreground">Stock: {p.stock_actual}</p>
                   </div>
                   <span className="font-bold text-primary">${Number(p.precio_venta).toLocaleString('es-AR')}</span>
@@ -368,69 +389,44 @@ export default function BarberoPage() {
             </div>
           </div>
         )}
+      </div>
 
-      {/* Modal venta producto */}
-      <Dialog open={modalVenta} onOpenChange={setModalVenta}>
+      {/* ── Modales ──────────────────────────────────────────────────────────── */}
+
+      {/* Cancelar */}
+      <Dialog open={modalCancelar} onOpenChange={v => { if (!guardandoCancelacion) setModalCancelar(v) }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Venta de producto</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Producto</Label>
-              <Select value={formVenta.idproducto} onValueChange={v => setFormVenta(p => ({ ...p, idproducto: v }))}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
-                <SelectContent>
-                  {productosVenta.filter(p => p.stock_actual > 0).map(p => (
-                    <SelectItem key={p.idproducto} value={String(p.idproducto)}>
-                      {p.nombre_producto} — ${Number(p.precio_venta).toLocaleString('es-AR')} (stock: {p.stock_actual})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Cantidad</Label>
-              <Input type="number" min="1" value={formVenta.cantidad} onChange={e => setFormVenta(p => ({ ...p, cantidad: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Método de pago</Label>
-              <Select value={formVenta.metodo_pago} onValueChange={v => setFormVenta(p => ({ ...p, metodo_pago: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
-                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
-                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {formVenta.idproducto && (
-              <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 flex justify-between">
-                <span className="text-sm">Total</span>
-                <span className="font-bold text-primary">${((productosVenta.find(p => p.idproducto === Number(formVenta.idproducto))?.precio_venta ?? 0) * Number(formVenta.cantidad)).toLocaleString('es-AR')}</span>
-              </div>
-            )}
-            {errorVenta && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorVenta}</p>}
+          <DialogHeader><DialogTitle>Cancelar turno</DialogTitle></DialogHeader>
+          {turnoCancelar && (
+            <p className="text-sm text-muted-foreground -mt-2">
+              {turnoCancelar.cliente?.persona.nombre_completo ?? 'Sin nombre'} · {turnoCancelar.hora_inicio.slice(0,5)} hs · {turnoCancelar.servicio.nombre_servicio}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            <Label>Motivo (opcional)</Label>
+            <Textarea placeholder="Ej: No puedo atender ese día." value={motivoCancelacion}
+              onChange={e => setMotivoCancelacion(e.target.value)} rows={3} />
+            <p className="text-xs text-muted-foreground">Si el cliente tiene email, va a recibir un aviso.</p>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setModalVenta(false)}>Cancelar</Button>
-            <Button onClick={registrarVentaBarbero} disabled={guardandoVenta || !formVenta.idproducto}>{guardandoVenta ? 'Guardando...' : 'Confirmar venta'}</Button>
+            <Button variant="outline" onClick={() => setModalCancelar(false)}>Volver</Button>
+            <Button variant="destructive" onClick={confirmarCancelacion} disabled={guardandoCancelacion}>
+              {guardandoCancelacion ? 'Cancelando...' : 'Confirmar cancelación'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal cobro */}
+      {/* Cobro */}
       <Dialog open={modalCobro} onOpenChange={setModalCobro}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Registrar cobro</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground -mt-2">{turnoACobrar?.cliente?.persona?.nombre_completo ?? 'Sin nombre'} · {turnoACobrar?.servicio?.nombre_servicio ?? ''}</p>
+          <DialogHeader><DialogTitle>Registrar cobro</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">{turnoACobrar?.cliente?.persona?.nombre_completo ?? 'Sin nombre'} · {turnoACobrar?.servicio?.nombre_servicio}</p>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Monto</Label>
+            <div className="space-y-1.5"><Label>Monto</Label>
               <Input type="number" value={montoCobro} onChange={e => setMontoCobro(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Método de pago</Label>
+            <div className="space-y-1.5"><Label>Método de pago</Label>
               <Select value={metodoCobro} onValueChange={setMetodoCobro}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -451,55 +447,67 @@ export default function BarberoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal cancelar turno con motivo */}
-      <Dialog open={modalCancelar} onOpenChange={setModalCancelar}>
+      {/* Venta producto */}
+      <Dialog open={modalVenta} onOpenChange={setModalVenta}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Cancelar turno</DialogTitle>
-          </DialogHeader>
-          {turnoCancelar && (
-            <p className="text-sm text-muted-foreground -mt-2">
-              {turnoCancelar.cliente?.persona.nombre_completo ?? 'Sin nombre'} · {turnoCancelar.hora_inicio.slice(0,5)} hs · {turnoCancelar.servicio.nombre_servicio}
-            </p>
-          )}
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Motivo (opcional)</Label>
-              <Textarea
-                placeholder="Ej: No puedo atender por razones de salud, problemas con el local, etc."
-                value={motivoCancelacion}
-                onChange={e => setMotivoCancelacion(e.target.value)}
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">Si el cliente tiene email registrado, va a recibir un aviso con este motivo.</p>
+          <DialogHeader><DialogTitle>Venta de producto</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5"><Label>Producto</Label>
+              <Select value={formVenta.idproducto} onValueChange={v => setFormVenta(p => ({ ...p, idproducto: v }))}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar producto" /></SelectTrigger>
+                <SelectContent>
+                  {productosVenta.filter(p => p.stock_actual > 0).map(p => (
+                    <SelectItem key={p.idproducto} value={String(p.idproducto)}>
+                      {p.nombre_producto} — ${Number(p.precio_venta).toLocaleString('es-AR')} (stock: {p.stock_actual})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            <div className="space-y-1.5"><Label>Cantidad</Label>
+              <Input type="number" min="1" value={formVenta.cantidad} onChange={e => setFormVenta(p => ({ ...p, cantidad: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5"><Label>Método de pago</Label>
+              <Select value={formVenta.metodo_pago} onValueChange={v => setFormVenta(p => ({ ...p, metodo_pago: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {formVenta.idproducto && (
+              <div className="flex justify-between rounded-xl bg-primary/10 border border-primary/20 px-4 py-3">
+                <span className="text-sm">Total</span>
+                <span className="font-bold text-primary">${((productosVenta.find(p => p.idproducto === Number(formVenta.idproducto))?.precio_venta ?? 0) * Number(formVenta.cantidad)).toLocaleString('es-AR')}</span>
+              </div>
+            )}
+            {errorVenta && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorVenta}</p>}
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setModalCancelar(false)}>Volver</Button>
-            <Button variant="destructive" onClick={confirmarCancelacion} disabled={guardandoCancelacion}>
-              {guardandoCancelacion ? 'Cancelando...' : 'Confirmar cancelación'}
+            <Button variant="outline" onClick={() => setModalVenta(false)}>Cancelar</Button>
+            <Button onClick={registrarVentaBarbero} disabled={guardandoVenta || !formVenta.idproducto}>
+              {guardandoVenta ? 'Guardando...' : 'Confirmar venta'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal nuevo turno */}
-      <Dialog open={modal} onOpenChange={setModal}>
+      {/* Nuevo turno */}
+      <Dialog open={modalNuevo} onOpenChange={setModalNuevo}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Nuevo Turno</DialogTitle></DialogHeader>
           <form onSubmit={handleGuardar} className="space-y-4 py-2">
-            <div className="grid gap-2">
-              <Label>Nombre del cliente *</Label>
+            <div className="grid gap-2"><Label>Nombre del cliente *</Label>
               <Input placeholder="Ej: Juan Perez" value={form.nombre_cliente}
                 onChange={e => setForm(p => ({...p, nombre_cliente: e.target.value}))} required />
             </div>
-            <div className="grid gap-2">
-              <Label>Teléfono</Label>
+            <div className="grid gap-2"><Label>Teléfono</Label>
               <Input placeholder="+54 11 1234-5678" value={form.telefono_cliente}
                 onChange={e => setForm(p => ({...p, telefono_cliente: e.target.value}))} />
             </div>
-            <div className="grid gap-2">
-              <Label>Servicio *</Label>
+            <div className="grid gap-2"><Label>Servicio *</Label>
               <Select value={form.idservicio} onValueChange={v => setForm(p => ({...p, idservicio: v}))}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
                 <SelectContent>
@@ -512,13 +520,16 @@ export default function BarberoPage() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>Fecha *</Label>
-                <Input type="date" value={form.fecha} min={hoyStr}
-                  onChange={e => { setForm(p => ({...p, fecha: e.target.value})); cargarTurnosDia(e.target.value) }} required />
+              <div className="grid gap-2"><Label>Fecha *</Label>
+                <Input type="date" value={form.fecha} min={hoyStr()}
+                  onChange={e => {
+                    setForm(p => ({...p, fecha: e.target.value}))
+                    api.get<Turno[]>(`/turnos?fecha=${e.target.value}`)
+                      .then(t => setTurnosDia(t.filter(x => !['cancelado','archivado'].includes(x.estado))))
+                      .catch(() => setTurnosDia([]))
+                  }} required />
               </div>
-              <div className="grid gap-2">
-                <Label>Hora *</Label>
+              <div className="grid gap-2"><Label>Hora *</Label>
                 <Select value={form.hora_inicio} onValueChange={v => setForm(p => ({...p, hora_inicio: v}))}>
                   <SelectTrigger><SelectValue placeholder="Hora" /></SelectTrigger>
                   <SelectContent className="max-h-48">
@@ -528,25 +539,21 @@ export default function BarberoPage() {
               </div>
             </div>
             {turnosDia.length > 0 && (
-              <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1.5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Turnos ya agendados ese día</p>
+              <div className="rounded-xl border border-border/50 bg-muted/30 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ya agendados ese día</p>
                 {[...turnosDia].sort((a,b) => a.hora_inicio.localeCompare(b.hora_inicio)).map(t => (
                   <div key={t.idagenda} className="flex items-center gap-2 text-xs">
-                    <span className="w-10 font-mono font-bold text-foreground">{t.hora_inicio.slice(0,5)}</span>
+                    <span className="w-10 font-mono font-bold">{t.hora_inicio.slice(0,5)}</span>
                     <span className="text-muted-foreground">–</span>
                     <span className="w-10 font-mono text-muted-foreground">{t.hora_fin.slice(0,5)}</span>
                     <span className="flex-1 truncate text-muted-foreground">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</span>
-                    <span className="shrink-0 text-muted-foreground/70">{t.servicio.nombre_servicio}</span>
                   </div>
                 ))}
               </div>
             )}
-            {turnosDia.length === 0 && form.fecha && (
-              <p className="text-xs text-green-500">Sin turnos agendados para ese día.</p>
-            )}
             {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
             <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => setModal(false)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setModalNuevo(false)}>Cancelar</Button>
               <Button type="submit" disabled={guardando}>{guardando ? 'Guardando...' : 'Crear turno'}</Button>
             </DialogFooter>
           </form>
@@ -556,30 +563,80 @@ export default function BarberoPage() {
   )
 }
 
-// ── Subcomponente: un día en la pestaña Agenda ────────────────────────────────
-function AgendaDia({ fecha, label }: { fecha: string; label: string }) {
+// ── Subcomponente: día en pestaña Agenda ──────────────────────────────────────
+
+function AgendaDia({
+  fecha, label,
+  onCambiarEstado, onCancelar,
+}: {
+  fecha: string; label: string
+  onCambiarEstado: (id: number, estado: string) => Promise<void>
+  onCancelar: (t: Turno) => void
+}) {
   const [turnos, setTurnos] = useState<Turno[] | null>(null)
 
-  useEffect(() => {
-    api.get<Turno[]>(`/turnos?fecha=${fecha}`).then(setTurnos).catch(() => setTurnos([]))
-  }, [fecha])
+  const recargar = useCallback(() =>
+    api.get<Turno[]>(`/turnos?fecha=${fecha}`)
+      .then(data => setTurnos([...data].sort((a,b) => a.hora_inicio.localeCompare(b.hora_inicio))))
+      .catch(() => setTurnos([])), [fecha])
+
+  useEffect(() => { recargar() }, [recargar])
+
+  const accion = async (id: number, estado: string) => { await onCambiarEstado(id, estado); recargar() }
+  const cancelar = (t: Turno) => { onCancelar(t); /* caller must reload after modal */ }
 
   return (
     <div>
-      <p className="mb-1 font-semibold">{label}</p>
+      <p className="mb-2 text-sm font-bold text-muted-foreground">{label}</p>
       {turnos === null ? (
         <p className="text-xs text-muted-foreground">Cargando...</p>
       ) : turnos.length === 0 ? (
-        <p className="text-xs text-muted-foreground">0 turnos programados</p>
+        <p className="rounded-2xl border border-border/30 bg-card/20 py-3 text-center text-xs text-muted-foreground">Sin turnos</p>
       ) : (
-        <div className="space-y-1">
-          {[...turnos].sort((a,b) => a.hora_inicio.localeCompare(b.hora_inicio)).map(t => (
-            <div key={t.idagenda} className="flex items-center gap-3 rounded-lg border border-border/30 bg-card/20 px-3 py-2 text-sm">
-              <span className="w-11 text-xs font-medium">{t.hora_inicio.slice(0,5)}</span>
-              <span className="flex-1 truncate">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</span>
-              <span className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio}</span>
-            </div>
-          ))}
+        <div className="space-y-2">
+          {turnos.map(t => {
+            const est = ESTADO[t.estado] ?? ESTADO.pendiente
+            const finalizado = ['atendido','cobrado','ausente','cancelado'].includes(t.estado)
+            return (
+              <div key={t.idagenda} className={cn('flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-4 py-3 transition-opacity', finalizado && 'opacity-40')}>
+                <div className="shrink-0 text-center">
+                  <p className="text-sm font-bold tabular-nums">{t.hora_inicio.slice(0,5)}</p>
+                  <p className="text-[10px] text-muted-foreground">{t.hora_fin.slice(0,5)}</p>
+                </div>
+                <div className="mx-1 h-7 w-px bg-border/50 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-semibold">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                  <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className={cn('text-xs font-medium', est.text)}>{est.label}</span>
+                  {!finalizado && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-7 text-muted-foreground">
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {t.estado === 'pendiente' && (
+                          <DropdownMenuItem onClick={() => accion(t.idagenda, 'confirmado')}>
+                            <CheckCircle className="mr-2 size-4 text-yellow-400" />Confirmar
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => accion(t.idagenda, 'atendido')}>
+                          <UserCheck className="mr-2 size-4 text-green-400" />Marcar atendido
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => cancelar(t)} className="text-destructive">
+                          <XCircle className="mr-2 size-4" />Cancelar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -587,73 +644,49 @@ function AgendaDia({ fecha, label }: { fecha: string; label: string }) {
 }
 
 // ── Subcomponente: Stats ──────────────────────────────────────────────────────
+
 function StatsTab({ turnos, perfil }: { turnos: Turno[]; perfil: Perfil | null }) {
   const atendidos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').length
-  const ingresos = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
-  const ausentes = turnos.filter(t => t.estado === 'ausente').length
-  const fmt = (n: number) => n >= 1000 ? `$${(n/1000).toFixed(1)}k` : `$${n}`
+  const ingresos  = turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').reduce((a, t) => a + Number(t.servicio.precio), 0)
+  const ausentes  = turnos.filter(t => t.estado === 'ausente').length
+  const fmt       = (n: number) => n >= 1000 ? `$${(n/1000).toFixed(1)}k` : `$${n}`
 
   const cuentaServ: Record<string, number> = {}
-  turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado').forEach(t => {
-    cuentaServ[t.servicio.nombre_servicio] = (cuentaServ[t.servicio.nombre_servicio] ?? 0) + 1
-  })
+  turnos.filter(t => t.estado === 'atendido' || t.estado === 'cobrado')
+    .forEach(t => { cuentaServ[t.servicio.nombre_servicio] = (cuentaServ[t.servicio.nombre_servicio] ?? 0) + 1 })
   const maxServ = Math.max(...Object.values(cuentaServ), 1)
   const serviciosOrden = Object.entries(cuentaServ).sort((a, b) => b[1] - a[1])
 
   return (
-    <div className="rounded-xl border border-border/30 bg-card/10">
-      {/* Métricas */}
-      <div className="p-5">
-        <p className="mb-4 text-sm font-semibold">Este mes</p>
-        <div className="grid grid-cols-2 gap-y-5">
-          <div>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>👤</span> Turnos atendidos
-            </p>
-            <p className="mt-1 text-3xl font-bold">{atendidos}</p>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { icon: <UserCheck className="size-4 text-green-400" />, val: atendidos, label: 'Atendidos hoy', color: 'text-green-400' },
+          { icon: <TrendingUp className="size-4 text-primary" />,  val: fmt(ingresos), label: 'Ingresos hoy', color: 'text-primary' },
+          { icon: <Star className="size-4 text-yellow-400 fill-yellow-400" />, val: Number(perfil?.rating_promedio ?? 0).toFixed(1), label: 'Calificación', color: 'text-yellow-400' },
+          { icon: <AlertCircle className="size-4 text-orange-400" />, val: ausentes, label: 'Ausencias', color: 'text-orange-400' },
+        ].map(s => (
+          <div key={s.label} className="rounded-2xl border border-border/40 bg-card/40 p-4">
+            <div className="mb-2 flex items-center gap-1.5">{s.icon}<p className="text-xs text-muted-foreground">{s.label}</p></div>
+            <p className={`text-3xl font-black ${s.color}`}>{s.val}</p>
           </div>
-          <div>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>$</span> Ingresos
-            </p>
-            <p className="mt-1 text-3xl font-bold">{fmt(ingresos)}</p>
-          </div>
-          <div>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>⭐</span> Calificación
-            </p>
-            <p className="mt-1 text-3xl font-bold">{Number(perfil?.rating_promedio ?? 0).toFixed(1)}</p>
-          </div>
-          <div>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>⚠️</span> Ausencias
-            </p>
-            <p className="mt-1 text-3xl font-bold">{ausentes}</p>
-          </div>
-        </div>
+        ))}
       </div>
-
-      {/* Servicios */}
       {serviciosOrden.length > 0 && (
-        <>
-          <div className="border-t border-border/30" />
-          <div className="p-5">
-            <p className="mb-4 text-sm font-semibold">Servicios realizados</p>
-            <div className="space-y-4">
-              {serviciosOrden.map(([nombre, count]) => (
-                <div key={nombre}>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm">{nombre}</span>
-                    <span className="text-sm text-muted-foreground">{count}</span>
-                  </div>
-                  <div className="mt-1.5 h-px w-full bg-border/30">
-                    <div className="h-px bg-yellow-500" style={{ width: `${(count / maxServ) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
+        <div className="rounded-2xl border border-border/40 bg-card/40 p-4 space-y-4">
+          <p className="text-sm font-bold">Servicios realizados</p>
+          {serviciosOrden.map(([nombre, count]) => (
+            <div key={nombre}>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span className="text-sm">{nombre}</span>
+                <span className="text-sm font-bold text-primary">{count}</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-border/30">
+                <div className="h-1.5 rounded-full bg-primary" style={{ width: `${(count / maxServ) * 100}%` }} />
+              </div>
             </div>
-          </div>
-        </>
+          ))}
+        </div>
       )}
     </div>
   )
