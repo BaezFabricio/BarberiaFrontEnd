@@ -69,11 +69,11 @@ type BarberiaPub = {
   telefono?: string | null; direccion?: string | null; correo_negocio?: string | null
   horario_lv_desde?: string; horario_lv_hasta?: string; horario_sab_desde?: string; horario_sab_hasta?: string; domingo_cerrado?: boolean
   instagram?: string | null; facebook?: string | null; whatsapp_negocio?: string | null
-  reservas_online?: boolean; slogan?: string | null
+  reservas_online?: boolean; slogan?: string | null; descripcion?: string | null
   color_portada?: string | null; color_nombre_1?: string | null; color_nombre_2?: string | null
   texto_portada_1?: string | null; texto_portada_2?: string | null
   color_header_1?: string | null; color_header_2?: string | null; fuente_header?: string | null
-  maps_embed?: string | null
+  maps_embed?: string | null; tiempo_cancelacion?: number
   servicios: Servicio[]; barberos: Barbero[]
 }
 
@@ -86,6 +86,8 @@ export default function Landing() {
 
   const [step, setStep] = useState(1)
   const [carouselImages, setCarouselImages] = useState<{ url: string }[]>([])
+  const [galeriaImages, setGaleriaImages] = useState<{ idimagen: number; url: string }[]>([])
+  const [galeriaExpandida, setGaleriaExpandida] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
   const [subdominio, setSubdominio] = useState<string | null>(null)
   const [barberia, setBarberia] = useState<BarberiaPub | null>(null)
@@ -138,6 +140,11 @@ export default function Landing() {
     publicFetch<{ idimagen: number; url: string }[]>(qc)
       .then(imgs => setCarouselImages(imgs.length > 0 ? imgs : FALLBACK_IMAGES))
       .catch(() => setCarouselImages(FALLBACK_IMAGES))
+
+    const qg = sub ? `/galeria?subdominio=${sub}` : '/galeria'
+    publicFetch<{ idimagen: number; url: string }[]>(qg)
+      .then(imgs => setGaleriaImages(imgs))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -263,8 +270,10 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <nav className="hidden md:flex items-center gap-6 text-sm text-white/70">
+              <a href="#nosotros" className="hover:text-white transition-colors">Nosotros</a>
               <a href="#servicios" className="hover:text-white transition-colors">Servicios</a>
               <a href="#equipo" className="hover:text-white transition-colors">Equipo</a>
+              <a href="#ubicacion" className="hover:text-white transition-colors">Ubicación</a>
               <a href="#reserva" className="hover:text-white transition-colors">Reservar</a>
             </nav>
             <ThemeToggle />
@@ -365,6 +374,64 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── HORARIOS ── */}
+      <section className="bg-primary py-5 text-primary-foreground">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 text-sm font-medium">
+            <div className="flex items-center gap-2.5">
+              <Clock className="size-4 opacity-70" />
+              <span className="opacity-70">Lun – Vie</span>
+              <span className="font-bold">{barberia.horario_lv_desde ?? '09:00'} – {barberia.horario_lv_hasta ?? '19:00'} hs</span>
+            </div>
+            <div className="hidden md:block h-5 w-px bg-primary-foreground/20" />
+            <div className="flex items-center gap-2.5">
+              <Clock className="size-4 opacity-70" />
+              <span className="opacity-70">Sábado</span>
+              <span className="font-bold">{barberia.horario_sab_desde ?? '09:00'} – {barberia.horario_sab_hasta ?? '15:00'} hs</span>
+            </div>
+            <div className="hidden md:block h-5 w-px bg-primary-foreground/20" />
+            <div className="flex items-center gap-2.5">
+              <Clock className="size-4 opacity-70" />
+              <span className="opacity-70">Domingo</span>
+              <span className="font-bold">{barberia.domingo_cerrado ? 'Cerrado' : 'Abierto'}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SOBRE NOSOTROS ── */}
+      {(barberia.descripcion || barberia.slogan) && (
+        <section id="nosotros" className="py-16 scroll-mt-16">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-widest">
+                  <Scissors className="size-3" /> Quiénes somos
+                </div>
+                <h2 className="text-3xl font-black tracking-tight leading-tight">{barberia.nombre_negocio}</h2>
+                {barberia.slogan && <p className="text-lg text-primary font-medium italic">"{barberia.slogan}"</p>}
+                {barberia.descripcion && (
+                  <p className="text-muted-foreground leading-relaxed">{barberia.descripcion}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { valor: barberia.barberos.length, label: 'Barberos profesionales' },
+                  { valor: barberia.servicios.length, label: 'Servicios disponibles' },
+                  { valor: '100%', label: 'Satisfacción garantizada' },
+                  { valor: 'Online', label: 'Reservas disponibles' },
+                ].map(({ valor, label }) => (
+                  <div key={label} className="rounded-2xl border border-border bg-card p-4 text-center">
+                    <p className="text-2xl font-black text-primary">{valor}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── SERVICIOS ── */}
       {barberia.servicios.length > 0 && (
         <section id="servicios" className="py-16 scroll-mt-16">
@@ -461,6 +528,82 @@ export default function Landing() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── GALERÍA ── */}
+      {galeriaImages.length > 0 && (
+        <section className="py-16 bg-card/30">
+          <div className="container mx-auto px-4">
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
+              <p className="mt-2 text-muted-foreground">Cada corte, una obra</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
+              {(galeriaExpandida ? galeriaImages : galeriaImages.slice(0, 8)).map(img => (
+                <div key={img.idimagen} className="group relative aspect-square overflow-hidden rounded-2xl bg-muted">
+                  <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                </div>
+              ))}
+            </div>
+            {galeriaImages.length > 8 && (
+              <div className="mt-8 flex justify-center">
+                <button
+                  onClick={() => setGaleriaExpandida(e => !e)}
+                  className="rounded-xl border border-border px-6 py-2.5 text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                >
+                  {galeriaExpandida ? 'Ver menos' : `Ver ${galeriaImages.length - 8} fotos más`}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── CÓMO LLEGAR ── */}
+      {(barberia.maps_embed || barberia.direccion) && (
+        <section id="ubicacion" className="py-16 scroll-mt-16">
+          <div className="container mx-auto px-4 max-w-5xl">
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-black tracking-tight">Cómo llegar</h2>
+              {barberia.direccion && <p className="mt-2 text-muted-foreground flex items-center justify-center gap-1.5"><MapPin className="size-4 text-primary" />{barberia.direccion}</p>}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+              <div className="space-y-4">
+                {barberia.telefono && (
+                  <a href={`tel:${barberia.telefono}`} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm hover:border-primary transition-colors">
+                    <Phone className="size-4 text-primary shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Teléfono</p>
+                      <p className="font-semibold">{barberia.telefono}</p>
+                    </div>
+                  </a>
+                )}
+                {barberia.whatsapp_negocio && (
+                  <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm hover:bg-green-500/10 transition-colors">
+                    <MessageCircle className="size-4 text-green-500 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">WhatsApp</p>
+                      <p className="font-semibold text-green-600">Envianos un mensaje</p>
+                    </div>
+                  </a>
+                )}
+                <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Clock className="size-3" /> Horarios</p>
+                  <p className="text-muted-foreground">Lun – Vie: <span className="font-semibold text-foreground">{barberia.horario_lv_desde} – {barberia.horario_lv_hasta} hs</span></p>
+                  <p className="text-muted-foreground">Sábado: <span className="font-semibold text-foreground">{barberia.horario_sab_desde} – {barberia.horario_sab_hasta} hs</span></p>
+                  <p className="text-muted-foreground">Domingo: <span className="font-semibold text-foreground">{barberia.domingo_cerrado ? 'Cerrado' : 'Abierto'}</span></p>
+                </div>
+              </div>
+              {barberia.maps_embed && (
+                <div className="md:col-span-2 overflow-hidden rounded-2xl border border-border h-64 md:h-72">
+                  <iframe src={barberia.maps_embed} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -770,12 +913,6 @@ export default function Landing() {
             </div>
           </div>
 
-          {barberia.maps_embed && (
-            <div className="mb-8 overflow-hidden rounded-2xl border border-border h-52">
-              <iframe src={barberia.maps_embed} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-            </div>
-          )}
-
           <div className="border-t border-border pt-6 text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} {nombreBarberia}
           </div>
@@ -918,10 +1055,24 @@ export default function Landing() {
             </a>
           )}
 
-          <p className="text-center text-xs text-muted-foreground px-4">
-            Te avisamos por email para confirmar tu turno. Recibirás un recordatorio el día anterior.
-          </p>
-          {barberia.direccion && <p className="text-center text-xs text-muted-foreground">📍 {barberia.direccion}</p>}
+          {/* Política de cancelación */}
+          <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 mx-1 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Política de cancelación</p>
+            <ul className="space-y-1.5 text-xs text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">✉</span>
+                Recibiste un email con el link para cancelar tu turno.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">⏱</span>
+                Podés cancelar con hasta {barberia.tiempo_cancelacion ?? 60} {(barberia.tiempo_cancelacion ?? 60) < 60 ? 'minutos' : `${Math.round((barberia.tiempo_cancelacion ?? 60) / 60)} hora${(barberia.tiempo_cancelacion ?? 60) > 60 ? 's' : ''}`} de anticipación.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">📍</span>
+                {barberia.direccion ?? 'Consultá la dirección por WhatsApp.'}
+              </li>
+            </ul>
+          </div>
 
           <Button onClick={resetReserva} className="w-full" size="lg">Hacer otra reserva</Button>
         </DialogContent>

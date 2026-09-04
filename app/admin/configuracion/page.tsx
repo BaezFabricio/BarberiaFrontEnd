@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save, Bell, ImagePlus, Trash2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
 
@@ -52,7 +53,7 @@ function SectionTitle({ icon: Icon, title, subtitle }: { icon: React.ElementType
 
 export default function ConfiguracionPage() {
   const [color, setColor] = useState('#d4a843')
-  const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '', slogan: '', color_portada: '#ffffff', color_nombre_1: '#ffffff', color_nombre_2: '#d4a843', texto_portada_1: '', texto_portada_2: '', color_header_1: '#ffffff', color_header_2: '#d4a843', fuente_header: 'Cinzel', maps_embed: '' })
+  const [negocio, setNegocio] = useState({ nombre: '', telefono: '', direccion: '', correo: '', slogan: '', descripcion: '', color_portada: '#ffffff', color_nombre_1: '#ffffff', color_nombre_2: '#d4a843', texto_portada_1: '', texto_portada_2: '', color_header_1: '#ffffff', color_header_2: '#d4a843', fuente_header: 'Cinzel', maps_embed: '' })
   const [horarios, setHorarios] = useState({ lv_desde: '09:00', lv_hasta: '19:00', sab_desde: '09:00', sab_hasta: '15:00', domingo_cerrado: true })
   const [reservas, setReservas] = useState({ duracion: '40', cancelacion: '60', confirmacion: '60', online: true, orden_llegada: true, inactividad: '60' })
   const [redes, setRedes] = useState({ instagram: '', facebook: '', whatsapp: '' })
@@ -116,7 +117,7 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     cargarCarrusel()
     api.get<Barberia>('/mi-barberia').then(d => {
-      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '', slogan: d.slogan ?? '', color_portada: d.color_portada ?? '#ffffff', color_nombre_1: d.color_nombre_1 ?? '#ffffff', color_nombre_2: d.color_nombre_2 ?? '#d4a843', texto_portada_1: d.texto_portada_1 ?? '', texto_portada_2: d.texto_portada_2 ?? '', color_header_1: d.color_header_1 ?? '#ffffff', color_header_2: d.color_header_2 ?? '#d4a843', fuente_header: d.fuente_header ?? 'Cinzel', maps_embed: d.maps_embed ?? '' })
+      setNegocio({ nombre: d.nombre_negocio, telefono: d.telefono ?? '', direccion: d.direccion ?? '', correo: d.correo_negocio ?? '', slogan: d.slogan ?? '', descripcion: (d as any).descripcion ?? '', color_portada: d.color_portada ?? '#ffffff', color_nombre_1: d.color_nombre_1 ?? '#ffffff', color_nombre_2: d.color_nombre_2 ?? '#d4a843', texto_portada_1: d.texto_portada_1 ?? '', texto_portada_2: d.texto_portada_2 ?? '', color_header_1: d.color_header_1 ?? '#ffffff', color_header_2: d.color_header_2 ?? '#d4a843', fuente_header: d.fuente_header ?? 'Cinzel', maps_embed: d.maps_embed ?? '' })
       if (d.color_primario) { setColor(d.color_primario); aplicarColor(d.color_primario) }
       setHorarios({ lv_desde: d.horario_lv_desde ?? '09:00', lv_hasta: d.horario_lv_hasta ?? '19:00', sab_desde: d.horario_sab_desde ?? '09:00', sab_hasta: d.horario_sab_hasta ?? '15:00', domingo_cerrado: d.domingo_cerrado ?? true })
       setReservas({ duracion: String(d.duracion_turno ?? 40), cancelacion: String(d.tiempo_cancelacion ?? 60), confirmacion: String(d.tiempo_confirmacion ?? 60), online: d.reservas_online ?? true, orden_llegada: d.orden_llegada ?? true, inactividad: String(d.dias_inactividad ?? 60) })
@@ -165,6 +166,7 @@ export default function ConfiguracionPage() {
         direccion:           negocio.direccion,
         correo_negocio:      negocio.correo,
         slogan:              negocio.slogan,
+        descripcion:         negocio.descripcion,
         color_portada:       negocio.color_portada,
         color_nombre_1:      negocio.color_nombre_1,
         color_nombre_2:      negocio.color_nombre_2,
@@ -242,6 +244,10 @@ export default function ConfiguracionPage() {
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Slogan</Label>
             <Input value={negocio.slogan} onChange={e => setNegocio(p => ({ ...p, slogan: e.target.value }))} placeholder="El mejor corte de la ciudad" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Descripción (sección "Sobre nosotros" en la landing)</Label>
+            <Textarea rows={4} value={negocio.descripcion} onChange={e => setNegocio(p => ({ ...p, descripcion: e.target.value }))} placeholder="Contá la historia de la barbería, tus valores, años de experiencia..." className="resize-none text-sm" />
           </div>
         </div>
 
