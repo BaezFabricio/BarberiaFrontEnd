@@ -539,7 +539,6 @@ export default function Landing() {
             {/* Header */}
             <div className="mb-8 flex items-end justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Portafolio</p>
                 <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
               </div>
               {galeriaImages.length > 6 && (
