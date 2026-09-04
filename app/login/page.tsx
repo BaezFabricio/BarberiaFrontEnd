@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Scissors, CalendarCheck, BarChart2, MessageSquare, Users, Eye, EyeOff } from 'lucide-react'
@@ -11,6 +11,8 @@ import { authApi } from '@/lib/api'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Card, CardContent } from '@/components/ui/card'
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3000'
+
 const features = [
   { icon: CalendarCheck, label: 'Agenda y turnos online' },
   { icon: BarChart2,     label: 'Reportes y estadísticas' },
@@ -18,12 +20,29 @@ const features = [
   { icon: Users,         label: 'Gestión de clientes' },
 ]
 
+function getSubdominio(): string | null {
+  if (typeof window === 'undefined') return null
+  const parts = window.location.hostname.split('.')
+  if (parts.length >= 3 && !parts.slice(-2).join('.').match(/vercel\.app|localhost/)) return parts[0]
+  const b = new URLSearchParams(window.location.search).get('b')
+  if (b) return b
+  return process.env.NEXT_PUBLIC_DEV_SUBDOMINIO ?? null
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [form, setForm] = useState({ correo_electronico: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [barberia, setBarberia] = useState<{ nombre_negocio: string; logo_url?: string | null } | null>(null)
+
+  useEffect(() => {
+    const sub = getSubdominio()
+    if (!sub) return
+    const url = `${BACKEND_URL}/api/public/barberia?subdominio=${sub}`
+    fetch(url).then(r => r.ok ? r.json() : null).then(d => { if (d?.nombre_negocio) setBarberia(d) }).catch(() => {})
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,10 +65,13 @@ export default function LoginPage() {
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-primary" />
 
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary">
-            <Scissors className="size-5 text-black" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary overflow-hidden">
+            {barberia?.logo_url
+              ? <img src={barberia.logo_url} alt={barberia.nombre_negocio} className="size-10 object-cover" />
+              : <Scissors className="size-5 text-black" />
+            }
           </div>
-          <span className="text-lg font-medium text-white">BarberSystem</span>
+          <span className="text-lg font-medium text-white">{barberia?.nombre_negocio ?? 'BarberSystem'}</span>
         </div>
 
         <div className="space-y-8">
@@ -72,7 +94,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-xs text-zinc-600">© {new Date().getFullYear()} BarberSystem</p>
+        <p className="text-xs text-zinc-600">© {new Date().getFullYear()} {barberia?.nombre_negocio ?? 'BarberSystem'}</p>
       </div>
 
       {/* Panel derecho */}
@@ -85,10 +107,13 @@ export default function LoginPage() {
 
           {/* Logo mobile */}
           <div className="flex lg:hidden items-center justify-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
-              <Scissors className="size-4 text-black" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary overflow-hidden">
+              {barberia?.logo_url
+                ? <img src={barberia.logo_url} alt={barberia.nombre_negocio} className="size-9 object-cover" />
+                : <Scissors className="size-4 text-black" />
+              }
             </div>
-            <span className="text-base font-medium">BarberSystem</span>
+            <span className="text-base font-medium">{barberia?.nombre_negocio ?? 'BarberSystem'}</span>
           </div>
 
           <div className="space-y-1">

@@ -660,7 +660,9 @@ export default function Landing() {
             })}
           </div>
 
-          <div className="mx-auto max-w-2xl">
+          <div className="mx-auto max-w-5xl">
+            <div className="flex gap-6 items-start">
+              <div className="flex-1 min-w-0 pb-28 lg:pb-0">
 
             {/* Step 1 */}
             {step === 1 && (
@@ -860,8 +862,17 @@ export default function Landing() {
               <div className="space-y-6">
                 {/* Resumen */}
                 <div className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden">
+                  <div className="flex justify-between px-4 py-3 text-sm">
+                    <span className="text-muted-foreground">Servicios</span>
+                    <div className="text-right">
+                      <p className="font-semibold">{servicioSeleccionado?.nombre_servicio}</p>
+                      {serviciosAdicionales.map(id => {
+                        const sv = barberia.servicios.find(s => s.idservicio === id)
+                        return sv ? <p key={id} className="text-xs text-muted-foreground">+ {sv.nombre_servicio}</p> : null
+                      })}
+                    </div>
+                  </div>
                   {[
-                    { label: 'Servicio', value: servicioSeleccionado?.nombre_servicio },
                     { label: 'Barbero', value: barberoSeleccionado?.nombre_completo },
                     { label: 'Fecha', value: selectedFecha && new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) },
                     { label: 'Hora', value: selectedHora ? `${selectedHora} hs` : '' },
@@ -873,7 +884,7 @@ export default function Landing() {
                   ))}
                   <div className="flex justify-between px-4 py-3">
                     <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="text-lg font-black text-primary">${Number(servicioSeleccionado?.precio ?? 0).toLocaleString('es-AR')}</span>
+                    <span className="text-lg font-black text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</span>
                   </div>
                 </div>
 
@@ -914,7 +925,158 @@ export default function Landing() {
                 </div>
               </div>
             )}
+              </div>{/* /left col */}
+
+              {/* ── PANEL LATERAL RESUMEN ── */}
+              <div className="hidden lg:block w-72 shrink-0">
+                <div className="sticky top-20 rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border">
+                    <h3 className="text-sm font-bold">Resumen del turno</h3>
+                  </div>
+
+                  {!selectedServicio ? (
+                    <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      Seleccioná un servicio para comenzar
+                    </div>
+                  ) : (
+                    <>
+                      {/* Servicios */}
+                      <div className="px-4 py-3 border-b border-border space-y-2.5">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold leading-tight">{servicioSeleccionado?.nombre_servicio}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5"><Clock className="inline size-3 mr-0.5" />{servicioSeleccionado?.duracion_minutos} min</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-bold">${Number(servicioSeleccionado?.precio ?? 0).toLocaleString('es-AR')}</p>
+                            {step === 1
+                              ? <button onClick={() => setSelectedServicio(null)} className="text-[10px] text-muted-foreground hover:text-destructive transition-colors">quitar</button>
+                              : <button onClick={() => setStep(1)} className="text-[10px] text-primary hover:underline">cambiar</button>
+                            }
+                          </div>
+                        </div>
+                        {serviciosAdicionales.map(id => {
+                          const sv = barberia.servicios.find(s => s.idservicio === id)
+                          if (!sv) return null
+                          return (
+                            <div key={id} className="flex items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium leading-tight">{sv.nombre_servicio}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5"><Clock className="inline size-3 mr-0.5" />{sv.duracion_minutos} min</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-sm font-bold">+${Number(sv.precio).toLocaleString('es-AR')}</p>
+                                {step === 1
+                                  ? <button onClick={() => setServiciosAdicionales(prev => prev.filter(i => i !== id))} className="text-[10px] text-muted-foreground hover:text-destructive transition-colors">quitar</button>
+                                  : <button onClick={() => setStep(1)} className="text-[10px] text-primary hover:underline">cambiar</button>
+                                }
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {serviciosAdicionales.length > 0 && (
+                          <div className="flex justify-between pt-1.5 border-t border-border/60 text-xs text-muted-foreground">
+                            <span>{1 + serviciosAdicionales.length} servicios · {totalDuracion} min</span>
+                            <span className="font-semibold">${Number(totalPrecio).toLocaleString('es-AR')}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Barbero */}
+                      {barberoSeleccionado && (
+                        <div className="px-4 py-3 border-b border-border flex items-center gap-2.5">
+                          <div className="size-9 shrink-0 overflow-hidden rounded-full border border-border bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                            {barberoSeleccionado.foto_url
+                              ? <img src={barberoSeleccionado.foto_url} alt={barberoSeleccionado.nombre_completo} className="size-9 object-cover" />
+                              : barberoSeleccionado.nombre_completo.split(' ').map((n: string) => n[0]).join('').slice(0, 2)
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Barbero</p>
+                            <p className="text-sm font-semibold truncate">{barberoSeleccionado.nombre_completo}</p>
+                          </div>
+                          <button onClick={() => setStep(2)} className="text-[10px] text-primary hover:underline shrink-0">cambiar</button>
+                        </div>
+                      )}
+
+                      {/* Fecha y hora */}
+                      {(selectedFecha || selectedHora) && (
+                        <div className="px-4 py-3 border-b border-border">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fecha y hora</p>
+                              {selectedFecha && (
+                                <p className="text-sm font-semibold capitalize">{new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                              )}
+                              {selectedHora && <p className="text-sm font-semibold">{selectedHora} hs</p>}
+                            </div>
+                            <button onClick={() => { setSelectedHora(null); setStep(3) }} className="text-[10px] text-primary hover:underline shrink-0 mt-3">cambiar</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Total */}
+                      <div className="px-4 py-3 border-b border-border">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-sm text-muted-foreground">Total</span>
+                          <span className="font-black text-xl text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</span>
+                        </div>
+                        {serviciosAdicionales.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-right mt-0.5">{totalDuracion} min</p>
+                        )}
+                      </div>
+
+                      {/* CTA */}
+                      {step < 4 && (
+                        <div className="px-4 py-3">
+                          <Button className="w-full"
+                            disabled={
+                              (step === 1) ||
+                              (step === 2 && !selectedBarbero) ||
+                              (step === 3 && (!selectedFecha || !selectedHora))
+                            }
+                            onClick={() => {
+                              if (step === 1 && selectedServicio) setStep(2)
+                              else if (step === 2 && selectedBarbero) setStep(3)
+                              else if (step === 3 && selectedFecha && selectedHora) setStep(4)
+                            }}
+                          >
+                            {step === 1 ? 'Elegir barbero' : step === 2 ? 'Elegir horario' : 'Confirmar datos'}
+                            <ChevronRight className="ml-1 size-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+            </div>
           </div>
+
+          {/* ── BARRA TOTAL STICKY MOBILE ── */}
+          {selectedServicio && step < 4 && (
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{totalDuracion} min · {1 + serviciosAdicionales.length} servicio{serviciosAdicionales.length !== 0 ? 's' : ''}</p>
+                <p className="font-black text-lg text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</p>
+              </div>
+              <Button size="sm"
+                disabled={
+                  (step === 2 && !selectedBarbero) ||
+                  (step === 3 && (!selectedFecha || !selectedHora))
+                }
+                onClick={() => {
+                  if (step === 1 && selectedServicio) setStep(2)
+                  else if (step === 2 && selectedBarbero) setStep(3)
+                  else if (step === 3 && selectedFecha && selectedHora) setStep(4)
+                }}
+              >
+                {step === 1 ? 'Elegir barbero' : step === 2 ? 'Elegir horario' : 'Confirmar datos'}
+                <ChevronRight className="ml-1 size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
