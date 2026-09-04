@@ -273,7 +273,6 @@ export default function Landing() {
               <a href="#nosotros" className="hover:text-white transition-colors">Nosotros</a>
               <a href="#servicios" className="hover:text-white transition-colors">Servicios</a>
               <a href="#equipo" className="hover:text-white transition-colors">Equipo</a>
-              <a href="#ubicacion" className="hover:text-white transition-colors">Ubicación</a>
               <a href="#reserva" className="hover:text-white transition-colors">Reservar</a>
             </nav>
             <ThemeToggle />
@@ -559,52 +558,6 @@ export default function Landing() {
                 </button>
               </div>
             )}
-          </div>
-        </section>
-      )}
-
-      {/* ── CÓMO LLEGAR ── */}
-      {(barberia.maps_embed || barberia.direccion) && (
-        <section id="ubicacion" className="py-16 scroll-mt-16">
-          <div className="container mx-auto px-4 max-w-5xl">
-            <div className="mb-10 text-center">
-              <h2 className="text-3xl font-black tracking-tight">Cómo llegar</h2>
-              {barberia.direccion && <p className="mt-2 text-muted-foreground flex items-center justify-center gap-1.5"><MapPin className="size-4 text-primary" />{barberia.direccion}</p>}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-              <div className="space-y-4">
-                {barberia.telefono && (
-                  <a href={`tel:${barberia.telefono}`} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm hover:border-primary transition-colors">
-                    <Phone className="size-4 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Teléfono</p>
-                      <p className="font-semibold">{barberia.telefono}</p>
-                    </div>
-                  </a>
-                )}
-                {barberia.whatsapp_negocio && (
-                  <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm hover:bg-green-500/10 transition-colors">
-                    <MessageCircle className="size-4 text-green-500 shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">WhatsApp</p>
-                      <p className="font-semibold text-green-600">Envianos un mensaje</p>
-                    </div>
-                  </a>
-                )}
-                <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Clock className="size-3" /> Horarios</p>
-                  <p className="text-muted-foreground">Lun – Vie: <span className="font-semibold text-foreground">{barberia.horario_lv_desde} – {barberia.horario_lv_hasta} hs</span></p>
-                  <p className="text-muted-foreground">Sábado: <span className="font-semibold text-foreground">{barberia.horario_sab_desde} – {barberia.horario_sab_hasta} hs</span></p>
-                  <p className="text-muted-foreground">Domingo: <span className="font-semibold text-foreground">{barberia.domingo_cerrado ? 'Cerrado' : 'Abierto'}</span></p>
-                </div>
-              </div>
-              {barberia.maps_embed && (
-                <div className="md:col-span-2 overflow-hidden rounded-2xl border border-border h-64 md:h-72">
-                  <iframe src={barberia.maps_embed} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-                </div>
-              )}
-            </div>
           </div>
         </section>
       )}

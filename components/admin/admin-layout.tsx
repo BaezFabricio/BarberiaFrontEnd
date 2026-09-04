@@ -21,7 +21,8 @@ import {
   DollarSign,
   Store,
   Globe,
-  Menu
+  Menu,
+  Images
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -78,6 +79,12 @@ const menuItems = [
       { title: 'Comisiones', href: '/admin/comisiones', icon: DollarSign },
       { title: 'Gastos', href: '/admin/gastos', icon: Receipt },
       { title: 'Reportes', href: '/admin/reportes', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'Landing',
+    items: [
+      { title: 'Galería', href: '/admin/galeria', icon: Images },
     ]
   },
   {
