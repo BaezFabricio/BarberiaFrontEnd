@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Calendar, Clock, MapPin, Phone, MessageCircle,
   Check, ChevronRight, Scissors, Star, Loader2, AlertCircle,
-  ChevronDown, Images
+  ChevronDown, Images, Plus
 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -95,6 +95,7 @@ export default function Landing() {
   const [errorBarberia, setErrorBarberia] = useState('')
 
   const [selectedServicio, setSelectedServicio] = useState<number | null>(null)
+  const [serviciosAdicionales, setServiciosAdicionales] = useState<number[]>([])
   const [selectedBarbero, setSelectedBarbero] = useState<number | null>(null)
   const [selectedFecha, setSelectedFecha] = useState('')
   const [selectedHora, setSelectedHora] = useState<string | null>(null)
@@ -147,6 +148,8 @@ export default function Landing() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => { setServiciosAdicionales([]) }, [selectedServicio])
+
   useEffect(() => {
     if (!selectedBarbero || !selectedFecha || !selectedServicio) return
     setLoadingSlots(true); setSelectedHora(null); setSlots([]); setSinHorarios(false)
@@ -168,6 +171,7 @@ export default function Landing() {
         body: JSON.stringify({
           ...(subdominio ? { subdominio } : {}),
           idservicio: selectedServicio, idusuario_barbero: selectedBarbero,
+          ...(serviciosAdicionales.length > 0 ? { servicios_adicionales: serviciosAdicionales } : {}),
           fecha: selectedFecha, hora_inicio: selectedHora,
           nombre_cliente: clienteData.nombre, telefono_cliente: clienteData.telefono,
           correo_electronico: clienteData.email || undefined,
@@ -175,7 +179,8 @@ export default function Landing() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error al reservar')
-      setReservaConfirmada({ ...data, barbero: barberoSeleccionado?.nombre_completo, precio: servicioSeleccionado?.precio, nombre: clienteData.nombre })
+      const todosNombres = [servicioSeleccionado?.nombre_servicio, ...serviciosAdicionales.map(id => barberia?.servicios.find(s => s.idservicio === id)?.nombre_servicio)].filter(Boolean).join(' + ')
+      setReservaConfirmada({ ...data, barbero: barberoSeleccionado?.nombre_completo, precio: totalPrecio, nombre: clienteData.nombre, servicio: todosNombres || data.servicio })
       setShowConfirmation(true)
     } catch (err: unknown) {
       setErrorReserva(err instanceof Error ? err.message : 'Error al reservar')
@@ -184,6 +189,7 @@ export default function Landing() {
 
   const resetReserva = () => {
     setStep(1); setSelectedServicio(null); setSelectedBarbero(null)
+    setServiciosAdicionales([])
     setSelectedFecha(''); setSelectedHora(null); setSlots([])
     setClienteData({ nombre: '', telefono: '', email: '' })
     setErrorReserva(''); setShowConfirmation(false); setReservaConfirmada(null)
@@ -196,6 +202,10 @@ export default function Landing() {
 
   const servicioSeleccionado = barberia?.servicios.find(s => s.idservicio === selectedServicio)
   const barberoSeleccionado = barberia?.barberos.find(b => b.idusuario === selectedBarbero)
+  const totalPrecio = (servicioSeleccionado?.precio ?? 0) +
+    serviciosAdicionales.reduce((acc, id) => acc + (barberia?.servicios.find(s => s.idservicio === id)?.precio ?? 0), 0)
+  const totalDuracion = (servicioSeleccionado?.duracion_minutos ?? 0) +
+    serviciosAdicionales.reduce((acc, id) => acc + (barberia?.servicios.find(s => s.idservicio === id)?.duracion_minutos ?? 0), 0)
   const nombreBarberia = barberia?.nombre_negocio ?? 'Barbería'
   const headerFont = barberia?.fuente_header && barberia.fuente_header !== 'inherit'
     ? `var(--font-${FONT_MAP[barberia.fuente_header] ?? 'cinzel'}), serif`
@@ -683,6 +693,48 @@ export default function Landing() {
                         </div>
                       ))}
                     </div>
+                    {/* Carrito: servicios adicionales */}
+                    {selectedServicio && barberia.servicios.filter(s => s.idservicio !== selectedServicio).length > 0 && (
+                      <div className="rounded-2xl border border-border bg-card/50 p-4 space-y-2.5">
+                        <p className="text-sm font-semibold">¿Querés agregar algo más?</p>
+                        <div className="space-y-2">
+                          {barberia.servicios.filter(s => s.idservicio !== selectedServicio).map(s => {
+                            const isAdded = serviciosAdicionales.includes(s.idservicio)
+                            return (
+                              <div key={s.idservicio}
+                                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-all ${isAdded ? 'border-primary/60 bg-primary/5' : 'border-border hover:border-primary/30'}`}>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium leading-tight">{s.nombre_servicio}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    <Clock className="inline size-3 mr-0.5" />{s.duracion_minutos} min
+                                    <span className="mx-1.5">·</span>
+                                    <span className="font-semibold text-foreground">${Number(s.precio).toLocaleString('es-AR')}</span>
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => setServiciosAdicionales(prev =>
+                                    isAdded ? prev.filter(id => id !== s.idservicio) : [...prev, s.idservicio]
+                                  )}
+                                  className={`shrink-0 flex size-7 items-center justify-center rounded-full border-2 transition-all ${isAdded ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:border-primary hover:text-primary'}`}
+                                >
+                                  {isAdded ? <Check className="size-3" /> : <Plus className="size-3.5" />}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {serviciosAdicionales.length > 0 && (
+                          <div className="border-t border-border pt-2.5 flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{1 + serviciosAdicionales.length} servicios:</span>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-xs text-muted-foreground"><Clock className="inline size-3 mr-0.5" />{totalDuracion} min</span>
+                              <span className="font-black text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex justify-end pt-2">
                       <Button onClick={() => setStep(2)} disabled={!selectedServicio} size="lg">
                         Continuar <ChevronRight className="ml-1 size-4" />
