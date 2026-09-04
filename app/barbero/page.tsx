@@ -220,7 +220,7 @@ export default function BarberoPage() {
           {(perfil?.rating_promedio ?? 0) > 0 && (
             <div className="flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1">
               <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-bold text-yellow-400">{Number(perfil.rating_promedio).toFixed(1)}</span>
+              <span className="text-sm font-bold text-yellow-400">{Number(perfil?.rating_promedio ?? 0).toFixed(1)}</span>
             </div>
           )}
         </div>
