@@ -72,6 +72,7 @@ export default function BarberoPage() {
   const [modalCancelar,setModalCancelar]= useState(false)
   const [modalCobro,   setModalCobro]   = useState(false)
   const [modalVenta,   setModalVenta]   = useState(false)
+  const [agendaRefreshKey, setAgendaRefreshKey] = useState(0)
 
   const [form, setForm] = useState({ ...FORM0, fecha: hoyStr() })
   const [turnosDia, setTurnosDia] = useState<Turno[]>([])
@@ -112,6 +113,7 @@ export default function BarberoPage() {
   const cambiarEstado = async (id: number, estado: string) => {
     await api.patch(`/turnos/${id}/estado`, { estado })
     recargar()
+    setAgendaRefreshKey(k => k + 1)
   }
 
   const abrirCancelacion = (t: Turno) => { setTurnoCancelar(t); setMotivoCancelacion(''); setModalCancelar(true) }
@@ -120,7 +122,9 @@ export default function BarberoPage() {
     setGuardandoCancelacion(true)
     try {
       await api.patch(`/turnos/${turnoCancelar.idagenda}/cancelar`, { motivo: motivoCancelacion })
-      setModalCancelar(false); recargar()
+      setModalCancelar(false)
+      recargar()
+      setAgendaRefreshKey(k => k + 1)
     } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error al cancelar') }
     finally { setGuardandoCancelacion(false) }
   }
@@ -338,7 +342,7 @@ export default function BarberoPage() {
         {tab === 'agenda' && (
           <div className="space-y-4">
             {proximosDias.map(d => (
-              <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} onCambiarEstado={cambiarEstado} onCancelar={abrirCancelacion} />
+              <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} refreshKey={agendaRefreshKey} onCambiarEstado={cambiarEstado} onCancelar={abrirCancelacion} />
             ))}
           </div>
         )}
@@ -566,10 +570,10 @@ export default function BarberoPage() {
 // ── Subcomponente: día en pestaña Agenda ──────────────────────────────────────
 
 function AgendaDia({
-  fecha, label,
+  fecha, label, refreshKey,
   onCambiarEstado, onCancelar,
 }: {
-  fecha: string; label: string
+  fecha: string; label: string; refreshKey: number
   onCambiarEstado: (id: number, estado: string) => Promise<void>
   onCancelar: (t: Turno) => void
 }) {
@@ -580,7 +584,7 @@ function AgendaDia({
       .then(data => setTurnos([...data].sort((a,b) => a.hora_inicio.localeCompare(b.hora_inicio))))
       .catch(() => setTurnos([])), [fecha])
 
-  useEffect(() => { recargar() }, [recargar])
+  useEffect(() => { recargar() }, [recargar, refreshKey])
 
   const accion = async (id: number, estado: string) => { await onCambiarEstado(id, estado); recargar() }
   const cancelar = (t: Turno) => { onCancelar(t); /* caller must reload after modal */ }
