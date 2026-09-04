@@ -85,7 +85,7 @@ export default function GaleriaPage() {
                 <button
                   onClick={() => eliminar(img.idimagen)}
                   disabled={eliminando === img.idimagen}
-                  className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-lg bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-lg bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-600 active:bg-red-600"
                 >
                   {eliminando === img.idimagen
                     ? <Loader2 className="size-3.5 animate-spin" />

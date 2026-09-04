@@ -426,7 +426,7 @@ export default function Landing() {
               </div>
 
               {/* Stats en columna */}
-              <div className="flex flex-row md:flex-col gap-3 shrink-0 flex-wrap">
+              <div className="grid grid-cols-2 gap-3 shrink-0">
                 {[
                   { valor: barberia.barberos.length, label: 'Barberos' },
                   { valor: barberia.servicios.length, label: 'Servicios' },
