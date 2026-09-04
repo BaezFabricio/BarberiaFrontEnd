@@ -399,30 +399,33 @@ export default function Landing() {
       </section>
 
       {/* ── SOBRE NOSOTROS ── */}
-      {(barberia.descripcion || barberia.slogan) && (
-        <section id="nosotros" className="py-16 scroll-mt-16">
-          <div className="container mx-auto px-4 max-w-4xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-widest">
-                  <Scissors className="size-3" /> Quiénes somos
-                </div>
+      {barberia.descripcion && (
+        <section id="nosotros" className="py-14 scroll-mt-16">
+          <div className="container mx-auto px-4 max-w-5xl">
+            {/* Label */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-8">
+              <Scissors className="size-3" /> Quiénes somos
+            </div>
+
+            {/* Layout horizontal: texto izquierda, stats derecha */}
+            <div className="flex flex-col md:flex-row gap-10 items-start">
+              {/* Texto */}
+              <div className="flex-1 space-y-3">
                 <h2 className="text-3xl font-black tracking-tight leading-tight">{barberia.nombre_negocio}</h2>
-                {barberia.slogan && <p className="text-lg text-primary font-medium italic">"{barberia.slogan}"</p>}
-                {barberia.descripcion && (
-                  <p className="text-muted-foreground leading-relaxed">{barberia.descripcion}</p>
-                )}
+                <p className="text-muted-foreground leading-relaxed max-w-prose">{barberia.descripcion}</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              {/* Stats en columna */}
+              <div className="flex flex-row md:flex-col gap-3 shrink-0 flex-wrap">
                 {[
-                  { valor: barberia.barberos.length, label: 'Barberos profesionales' },
-                  { valor: barberia.servicios.length, label: 'Servicios disponibles' },
-                  { valor: '100%', label: 'Satisfacción garantizada' },
-                  { valor: 'Online', label: 'Reservas disponibles' },
+                  { valor: barberia.barberos.length, label: 'Barberos' },
+                  { valor: barberia.servicios.length, label: 'Servicios' },
+                  { valor: '100%', label: 'Satisfacción' },
+                  { valor: 'Online', label: 'Reservas' },
                 ].map(({ valor, label }) => (
-                  <div key={label} className="rounded-2xl border border-border bg-card p-4 text-center">
+                  <div key={label} className="rounded-2xl border border-border bg-card px-5 py-4 text-center min-w-[90px]">
                     <p className="text-2xl font-black text-primary">{valor}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
                   </div>
                 ))}
               </div>
