@@ -1055,6 +1055,30 @@ export default function Landing() {
             </a>
           )}
 
+          {/* Dónde */}
+          {barberia.direccion && (
+            <div className="rounded-xl border border-border bg-card mx-1 overflow-hidden">
+              <div className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Dónde</p>
+                  <p className="font-bold text-sm leading-tight">{nombreBarberia}</p>
+                  <p className="text-xs text-muted-foreground truncate">{barberia.direccion}</p>
+                </div>
+                {barberia.logo_url && (
+                  <img src={barberia.logo_url} alt={nombreBarberia} className="size-12 shrink-0 rounded-lg object-cover border border-border" />
+                )}
+              </div>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(barberia.direccion)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 border-t border-border px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
+              >
+                <MapPin className="size-4" /> Cómo llegar
+              </a>
+            </div>
+          )}
+
           {/* Política de cancelación */}
           <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 mx-1 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Política de cancelación</p>
@@ -1066,10 +1090,6 @@ export default function Landing() {
               <li className="flex items-start gap-2">
                 <span className="text-primary mt-0.5">⏱</span>
                 Podés cancelar con hasta {barberia.tiempo_cancelacion ?? 60} {(barberia.tiempo_cancelacion ?? 60) < 60 ? 'minutos' : `${Math.round((barberia.tiempo_cancelacion ?? 60) / 60)} hora${(barberia.tiempo_cancelacion ?? 60) > 60 ? 's' : ''}`} de anticipación.
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary mt-0.5">📍</span>
-                {barberia.direccion ?? 'Consultá la dirección por WhatsApp.'}
               </li>
             </ul>
           </div>
