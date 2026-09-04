@@ -48,7 +48,7 @@ export default function GaleriaPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AdminHeader title="Galería" subtitle="Fotos que aparecen en la sección galería de la landing" />
+      <AdminHeader title="Galería" description="Fotos que aparecen en la sección galería de la landing" />
 
       <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
 
