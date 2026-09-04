@@ -297,45 +297,49 @@ export default function BarberoPage() {
     <div className="min-h-screen bg-background md:flex">
 
       {/* ── Sidebar desktop ──────────────────────────────────────────────────── */}
-      <aside className="hidden md:flex flex-col w-16 border-r border-border/40 bg-card/30 sticky top-0 h-screen">
-        {/* Avatar */}
-        <div className="flex flex-col items-center pt-4 pb-2 border-b border-border/40">
-          <div className="size-10 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center overflow-hidden">
+      <aside className="hidden md:flex flex-col w-52 border-r border-border/40 bg-card/30 sticky top-0 h-screen shrink-0">
+        {/* Avatar + nombre */}
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-border/40">
+          <div className="size-9 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center overflow-hidden shrink-0">
             {perfil?.foto_url
-              ? <img src={perfil.foto_url} alt="" className="size-10 object-cover" />
+              ? <img src={perfil.foto_url} alt="" className="size-9 object-cover" />
               : <span className="text-xs font-bold text-primary">{perfil ? initials(perfil.nombre_completo) : '..'}</span>
             }
           </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold leading-tight">{perfil?.nombre_completo.split(' ')[0] ?? '...'}</p>
+            <p className="text-xs text-muted-foreground">Barbero</p>
+          </div>
         </div>
         {/* Nav items */}
-        <nav className="flex flex-col items-center gap-1 py-3 flex-1">
+        <nav className="flex flex-col gap-0.5 px-2 py-3 flex-1">
           {visibleNav.map(item => (
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
               className={cn(
-                'flex flex-col items-center gap-1 w-12 py-2.5 rounded-xl transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left w-full',
                 tab === item.id
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               )}
             >
               {item.icon}
-              <span className="text-[9px] font-medium">{item.label}</span>
+              <span className="text-sm font-medium">{item.label}</span>
             </button>
           ))}
         </nav>
         {/* Bottom: perfil + admin */}
-        <div className="flex flex-col items-center gap-1 py-3 border-t border-border/40">
+        <div className="flex flex-col gap-0.5 px-2 py-3 border-t border-border/40">
           {isOwnerOrAdmin && (
-            <a href="/admin" className="flex flex-col items-center gap-1 w-12 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+            <a href="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
               <LayoutDashboard className="size-5" />
-              <span className="text-[9px]">Admin</span>
+              <span className="text-sm font-medium">Admin</span>
             </a>
           )}
-          <a href="/barbero/perfil" className="flex flex-col items-center gap-1 w-12 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+          <a href="/barbero/perfil" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
             <User className="size-5" />
-            <span className="text-[9px]">Perfil</span>
+            <span className="text-sm font-medium">Mi perfil</span>
           </a>
         </div>
       </aside>
@@ -410,21 +414,25 @@ export default function BarberoPage() {
 
           {/* ── AGENDA ── */}
           {tab === 'agenda' && (
-            <div className="p-4 md:p-6 max-w-2xl">
-              <SeccionAgendaDias />
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                {proximosDias.map(d => (
+                  <AgendaDia key={d.fecha} fecha={d.fecha} label={d.label} refreshKey={agendaRefreshKey} onCambiarEstado={cambiarEstado} onCancelar={abrirCancelacion} />
+                ))}
+              </div>
             </div>
           )}
 
           {/* ── STATS ── */}
           {tab === 'stats' && (
-            <div className="p-4 md:p-6 max-w-2xl">
+            <div className="p-4 md:p-6">
               <StatsTab turnos={turnos} perfil={perfil} />
             </div>
           )}
 
           {/* ── CAJA ── */}
           {tab === 'caja' && (
-            <div className="p-4 md:p-6 max-w-2xl space-y-2">
+            <div className="p-4 md:p-6 space-y-2">
               {turnosPendientesCobro.length === 0 ? (
                 <p className="py-12 text-center text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
               ) : turnosPendientesCobro.map(t => (
@@ -444,7 +452,7 @@ export default function BarberoPage() {
 
           {/* ── PRODUCTOS ── */}
           {tab === 'productos' && (
-            <div className="p-4 md:p-6 max-w-2xl space-y-3">
+            <div className="p-4 md:p-6 space-y-3">
               <button onClick={() => { setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setErrorVenta(''); setModalVenta(true) }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors">
                 <Plus className="size-4" />Registrar venta
