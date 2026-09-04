@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Calendar, Clock, MapPin, Phone, MessageCircle,
   Check, ChevronRight, Scissors, Star, Loader2, AlertCircle,
-  ChevronDown
+  ChevronDown, Images
 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -536,42 +536,63 @@ export default function Landing() {
       {galeriaImages.length > 0 && (
         <section className="py-16 bg-card/30">
           <div className="container mx-auto px-4 max-w-5xl">
-            {/* Header */}
-            <div className="mb-8 flex items-end justify-between">
-              <div>
-                <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
-              </div>
-              {galeriaImages.length > 6 && (
-                <button
-                  onClick={() => setGaleriaExpandida(e => !e)}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 transition-all"
-                >
-                  {galeriaExpandida ? 'Ver menos' : `Ver más fotos`}
-                  <ChevronDown className={`size-4 transition-transform duration-300 ${galeriaExpandida ? 'rotate-180' : ''}`} />
-                </button>
-              )}
-            </div>
 
-            {/* Grid inicial — siempre visible */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {galeriaImages.slice(0, 6).map((img, i) => (
-                <div key={img.idimagen}
-                  className={`group relative overflow-hidden rounded-2xl bg-muted ${i === 0 ? 'md:col-span-2 md:row-span-2 aspect-square md:aspect-auto md:h-full' : 'aspect-square'}`}>
-                  <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
+            {/* Estado comprimido */}
+            {!galeriaExpandida && (
+              <div className="flex flex-col items-center gap-6">
+                <div className="text-center">
+                  <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{galeriaImages.length} fotos de nuestros cortes y el equipo</p>
                 </div>
-              ))}
-            </div>
 
-            {/* Fila expandida — se desliza hacia abajo */}
-            {galeriaImages.length > 6 && (
-              <div
-                className="overflow-hidden transition-all duration-500 ease-in-out"
-                style={{ maxHeight: galeriaExpandida ? `${Math.ceil((galeriaImages.length - 6) / 3) * 320}px` : '0px', opacity: galeriaExpandida ? 1 : 0 }}
-              >
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                  {galeriaImages.slice(6).map(img => (
-                    <div key={img.idimagen} className="group relative aspect-square overflow-hidden rounded-2xl bg-muted">
+                {/* Fan de fotos comprimidas */}
+                <div className="relative flex items-center justify-center h-40" style={{ width: `${Math.min(galeriaImages.length, 7) * 52 + 80}px`, maxWidth: '100%' }}>
+                  {galeriaImages.slice(0, 7).map((img, i) => {
+                    const total = Math.min(galeriaImages.length, 7)
+                    const mid = (total - 1) / 2
+                    const offset = (i - mid) * 48
+                    const rotate = (i - mid) * 4
+                    return (
+                      <div
+                        key={img.idimagen}
+                        className="absolute size-28 overflow-hidden rounded-xl border-2 border-background shadow-lg transition-all duration-300 hover:scale-110 hover:z-50"
+                        style={{ transform: `translateX(${offset}px) rotate(${rotate}deg)`, zIndex: i }}
+                      >
+                        <img src={img.url} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setGaleriaExpandida(true)}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold hover:border-primary hover:text-primary transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <Images className="size-4" /> Ver todas las fotos
+                  <ChevronDown className="size-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Estado expandido con animación */}
+            {galeriaExpandida && (
+              <div>
+                <div className="mb-8 flex items-end justify-between">
+                  <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
+                  <button
+                    onClick={() => setGaleriaExpandida(false)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 transition-all"
+                  >
+                    Ver menos <ChevronDown className="size-4 rotate-180" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {galeriaImages.map((img, i) => (
+                    <div
+                      key={img.idimagen}
+                      className="group relative aspect-square overflow-hidden rounded-2xl bg-muted"
+                      style={{ animation: `fadeSlideUp 0.4s ease both`, animationDelay: `${i * 50}ms` }}
+                    >
                       <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
                     </div>
@@ -582,6 +603,13 @@ export default function Landing() {
           </div>
         </section>
       )}
+
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
 
       {/* ── RESERVA ── */}
       <section id="reserva" ref={reservaRef} className="py-16 scroll-mt-16">
