@@ -535,27 +535,49 @@ export default function Landing() {
       {/* ── GALERÍA ── */}
       {galeriaImages.length > 0 && (
         <section className="py-16 bg-card/30">
-          <div className="container mx-auto px-4">
-            <div className="mb-10 text-center">
-              <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
-              <p className="mt-2 text-muted-foreground">Cada corte, una obra</p>
+          <div className="container mx-auto px-4 max-w-5xl">
+            {/* Header */}
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Portafolio</p>
+                <h2 className="text-3xl font-black tracking-tight">Nuestro trabajo</h2>
+              </div>
+              {galeriaImages.length > 6 && (
+                <button
+                  onClick={() => setGaleriaExpandida(e => !e)}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 transition-all"
+                >
+                  {galeriaExpandida ? 'Ver menos' : `Ver más fotos`}
+                  <ChevronDown className={`size-4 transition-transform duration-300 ${galeriaExpandida ? 'rotate-180' : ''}`} />
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
-              {(galeriaExpandida ? galeriaImages : galeriaImages.slice(0, 8)).map(img => (
-                <div key={img.idimagen} className="group relative aspect-square overflow-hidden rounded-2xl bg-muted">
+
+            {/* Grid inicial — siempre visible */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {galeriaImages.slice(0, 6).map((img, i) => (
+                <div key={img.idimagen}
+                  className={`group relative overflow-hidden rounded-2xl bg-muted ${i === 0 ? 'md:col-span-2 md:row-span-2 aspect-square md:aspect-auto md:h-full' : 'aspect-square'}`}>
                   <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
                 </div>
               ))}
             </div>
-            {galeriaImages.length > 8 && (
-              <div className="mt-8 flex justify-center">
-                <button
-                  onClick={() => setGaleriaExpandida(e => !e)}
-                  className="rounded-xl border border-border px-6 py-2.5 text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                >
-                  {galeriaExpandida ? 'Ver menos' : `Ver ${galeriaImages.length - 8} fotos más`}
-                </button>
+
+            {/* Fila expandida — se desliza hacia abajo */}
+            {galeriaImages.length > 6 && (
+              <div
+                className="overflow-hidden transition-all duration-500 ease-in-out"
+                style={{ maxHeight: galeriaExpandida ? `${Math.ceil((galeriaImages.length - 6) / 3) * 320}px` : '0px', opacity: galeriaExpandida ? 1 : 0 }}
+              >
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                  {galeriaImages.slice(6).map(img => (
+                    <div key={img.idimagen} className="group relative aspect-square overflow-hidden rounded-2xl bg-muted">
+                      <img src={img.url} alt="Trabajo de barbería" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
