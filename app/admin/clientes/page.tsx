@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -71,6 +71,8 @@ export default function ClientesPage() {
   const [clienteEditar, setClienteEditar] = useState<Cliente | null>(null)
   const [formEditar, setFormEditar] = useState({ nombre_completo: '', telefono: '', correo_electronico: '', notas_cliente: '' })
   const [guardandoEditar, setGuardandoEditar] = useState(false)
+  const [confirmarEliminar, setConfirmarEliminar] = useState<Cliente | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const cargar = async () => {
     try { setClientes(await api.get<Cliente[]>('/clientes')) }
@@ -97,10 +99,14 @@ export default function ClientesPage() {
     } catch { } finally { setGuardandoEditar(false) }
   }
 
-  const eliminarCliente = async (c: Cliente) => {
-    if (!confirm(`¿Eliminar a ${c.persona.nombre_completo}?`)) return
-    await api.delete(`/clientes/${c.idcliente}`)
-    cargar()
+  const eliminarCliente = async () => {
+    if (!confirmarEliminar) return
+    setEliminando(true)
+    try {
+      await api.delete(`/clientes/${confirmarEliminar.idcliente}`)
+      setConfirmarEliminar(null)
+      cargar()
+    } catch { } finally { setEliminando(false) }
   }
 
   const cargarInactivos = async () => {
@@ -329,7 +335,7 @@ export default function ClientesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => abrirHistorial(c)}><History className="mr-2 size-4" />Ver historial</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => abrirEditar(c)}><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => eliminarCliente(c)}><Trash2 className="mr-2 size-4" />Eliminar</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => setConfirmarEliminar(c)}><Trash2 className="mr-2 size-4" />Eliminar</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -517,6 +523,25 @@ export default function ClientesPage() {
             <Button variant="outline" onClick={() => setClienteEditar(null)}>Cancelar</Button>
             <Button onClick={guardarEditar} disabled={guardandoEditar}>{guardandoEditar ? 'Guardando...' : 'Guardar'}</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmar eliminación */}
+      <Dialog open={!!confirmarEliminar} onOpenChange={v => !v && setConfirmarEliminar(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar cliente</DialogTitle>
+            <DialogDescription>El cliente quedará desactivado del sistema.</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Eliminar a <span className="font-semibold text-foreground">{confirmarEliminar?.persona.nombre_completo}</span>?
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmarEliminar(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={eliminarCliente} disabled={eliminando}>
+              {eliminando ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

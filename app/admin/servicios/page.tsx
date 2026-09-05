@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Search, MoreHorizontal, Pencil, Power, Clock, DollarSign, Package } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Pencil, Power, Clock, DollarSign, Package, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Image from 'next/image'
@@ -35,6 +35,8 @@ export default function ServiciosPage() {
   const [form, setForm] = useState(FORM_VACIO)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmarEliminar, setConfirmarEliminar] = useState<Servicio | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const cargar = async () => {
     try {
@@ -88,6 +90,16 @@ export default function ServiciosPage() {
   const toggleEstado = async (s: Servicio) => {
     await api.put(`/servicios/${s.idservicio}`, { estado: s.estado === 'activo' ? 'inactivo' : 'activo' })
     cargar()
+  }
+
+  const confirmarYEliminar = async () => {
+    if (!confirmarEliminar) return
+    setEliminando(true)
+    try {
+      await api.delete(`/servicios/${confirmarEliminar.idservicio}`)
+      setConfirmarEliminar(null)
+      cargar()
+    } catch { } finally { setEliminando(false) }
   }
 
   const filtrados = servicios.filter(s =>
@@ -192,6 +204,10 @@ export default function ServiciosPage() {
                         <DropdownMenuItem onClick={() => toggleEstado(s)}>
                           <Power className="mr-2 size-4" /> {s.estado === 'activo' ? 'Desactivar' : 'Activar'}
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => setConfirmarEliminar(s)}>
+                          <Trash2 className="mr-2 size-4" /> Eliminar
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -212,6 +228,24 @@ export default function ServiciosPage() {
           </div>
         )}
       </div>
+
+      {/* Modal confirmar eliminación */}
+      <Dialog open={!!confirmarEliminar} onOpenChange={v => !v && setConfirmarEliminar(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar servicio</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Eliminar <span className="font-semibold text-foreground">{confirmarEliminar?.nombre_servicio}</span>? El servicio quedará inactivo y no podrá elegirse en nuevos turnos.
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmarEliminar(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmarYEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal crear/editar */}
       <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>

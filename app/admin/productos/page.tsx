@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Search, MoreHorizontal, Pencil, Package, AlertTriangle, DollarSign, ShoppingBag, Minus, PlusIcon } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Pencil, Package, AlertTriangle, DollarSign, ShoppingBag, Minus, PlusIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 
@@ -38,6 +38,9 @@ export default function ProductosPage() {
   const [form, setForm] = useState(FORM_VACIO)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmarEliminar, setConfirmarEliminar] = useState<Producto | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState('')
 
   const cargar = async () => {
     try {
@@ -70,6 +73,18 @@ export default function ProductosPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al guardar.')
     } finally { setLoading(false) }
+  }
+
+  const confirmarYEliminar = async () => {
+    if (!confirmarEliminar) return
+    setEliminando(true); setErrorEliminar('')
+    try {
+      await api.delete(`/productos/${confirmarEliminar.idproducto}`)
+      setConfirmarEliminar(null)
+      cargar()
+    } catch (err: unknown) {
+      setErrorEliminar(err instanceof Error ? err.message : 'Error al eliminar.')
+    } finally { setEliminando(false) }
   }
 
   const ajustarStock = async (p: Producto, delta: number) => {
@@ -214,6 +229,10 @@ export default function ProductosPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => abrirEditar(p)}><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => { setErrorEliminar(''); setConfirmarEliminar(p) }}>
+                              <Trash2 className="mr-2 size-4" />Eliminar
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -225,6 +244,26 @@ export default function ProductosPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal confirmar eliminación */}
+      <Dialog open={!!confirmarEliminar} onOpenChange={v => { if (!v) { setConfirmarEliminar(null); setErrorEliminar('') } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar producto</DialogTitle>
+            <DialogDescription>Esta acción es permanente y no se puede deshacer.</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Eliminar <span className="font-semibold text-foreground">{confirmarEliminar?.nombre_producto}</span>?
+          </p>
+          {errorEliminar && <p className="text-sm text-destructive">{errorEliminar}</p>}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setConfirmarEliminar(null); setErrorEliminar('') }}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmarYEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal crear/editar */}
       <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>

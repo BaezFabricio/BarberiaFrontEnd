@@ -105,6 +105,8 @@ export default function GastosPage() {
 
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [confirmarEliminar, setConfirmarEliminar] = useState<Gasto | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const cargar = async () => {
     const { desde, hasta } = getRango(periodo)
@@ -169,9 +171,11 @@ export default function GastosPage() {
     finally { setGuardando(false) }
   }
 
-  const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar este registro?')) return
-    try { await api.delete(`/gastos/${id}`); cargar() } catch {}
+  const confirmarYEliminar = async () => {
+    if (!confirmarEliminar) return
+    setEliminando(true)
+    try { await api.delete(`/gastos/${confirmarEliminar.idgasto}`); setConfirmarEliminar(null); cargar() }
+    catch { } finally { setEliminando(false) }
   }
 
   const gastosNormales = gastos.filter(g => g.categoria_gasto !== 'retiro_caja')
@@ -310,7 +314,7 @@ export default function GastosPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => abrirEditarGasto(g)}><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => eliminar(g.idgasto)}><Trash2 className="mr-2 size-4" />Eliminar</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => setConfirmarEliminar(g)}><Trash2 className="mr-2 size-4" />Eliminar</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -399,7 +403,7 @@ export default function GastosPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => abrirEditarRetiro(g)}><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => eliminar(g.idgasto)}><Trash2 className="mr-2 size-4" />Eliminar</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => setConfirmarEliminar(g)}><Trash2 className="mr-2 size-4" />Eliminar</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -492,6 +496,24 @@ export default function GastosPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalRetiro(false)}>Cancelar</Button>
             <Button onClick={guardarRetiro} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmar eliminación */}
+      <Dialog open={!!confirmarEliminar} onOpenChange={v => !v && setConfirmarEliminar(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar registro</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Eliminar <span className="font-semibold text-foreground">{confirmarEliminar?.descripcion}</span>? Esta acción es permanente.
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmarEliminar(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmarYEliminar} disabled={eliminando}>
+              {eliminando ? 'Eliminando...' : 'Eliminar'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
