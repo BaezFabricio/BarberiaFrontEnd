@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save, Bell, ImagePlus, Trash2 } from 'lucide-react'
+import { Building2, Clock, CalendarCog, Globe, Palette, CheckCircle, Save, Bell, ImagePlus, Trash2, Archive, AlertTriangle } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
@@ -66,6 +66,20 @@ export default function ConfiguracionPage() {
   const [probandoEmail, setProbandoEmail] = useState(false)
   const [probandoWA, setProbandoWA] = useState(false)
   const [resultadoPrueba, setResultadoPrueba] = useState<{ tipo: 'email' | 'wa'; ok: boolean; msg: string } | null>(null)
+
+  const [archivarHasta, setArchivarHasta] = useState('')
+  const [archivando, setArchivando] = useState(false)
+  const [resultadoArchivo, setResultadoArchivo] = useState<{ ok: boolean; msg: string; detalle?: Record<string, number> } | null>(null)
+  const [confirmarArchivo, setConfirmarArchivo] = useState(false)
+
+  const ejecutarArchivado = async () => {
+    setArchivando(true); setResultadoArchivo(null)
+    try {
+      const r = await api.post<{ mensaje: string; archivados: Record<string, number> }>('/archivar', { hasta_fecha: archivarHasta })
+      setResultadoArchivo({ ok: true, msg: r.mensaje, detalle: r.archivados })
+    } catch (e: unknown) { setResultadoArchivo({ ok: false, msg: e instanceof Error ? e.message : 'Error al archivar' }) }
+    finally { setArchivando(false); setConfirmarArchivo(false) }
+  }
 
   const probarEmail = async () => {
     setProbandoEmail(true); setResultadoPrueba(null)
@@ -548,6 +562,62 @@ export default function ConfiguracionPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Archivar período */}
+        <div className="col-span-1 md:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+          <SectionTitle icon={Archive} title="Archivar período" subtitle="Ocultá datos históricos para limpiar las vistas sin borrarlos de la base de datos" />
+          <p className="text-sm text-muted-foreground">
+            Los turnos, pagos, ventas, gastos y retiros anteriores a la fecha elegida se marcarán como archivados y dejarán de aparecer en la Caja, Reportes y Agenda. Los datos siguen en la base de datos y no se pierden.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Archivar todo hasta</Label>
+              <input
+                type="date"
+                value={archivarHasta}
+                onChange={e => { setArchivarHasta(e.target.value); setConfirmarArchivo(false); setResultadoArchivo(null) }}
+                className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+            {!confirmarArchivo ? (
+              <button
+                type="button"
+                disabled={!archivarHasta}
+                onClick={() => setConfirmarArchivo(true)}
+                className="inline-flex items-center gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-600 hover:bg-orange-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Archive className="size-4" />Archivar período
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2">
+                <AlertTriangle className="size-4 text-destructive shrink-0" />
+                <span className="text-sm">¿Confirmar archivado hasta <strong>{archivarHasta}</strong>?</span>
+                <button type="button" onClick={ejecutarArchivado} disabled={archivando}
+                  className="ml-2 rounded-md bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
+                  {archivando ? 'Archivando...' : 'Sí, archivar'}
+                </button>
+                <button type="button" onClick={() => setConfirmarArchivo(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
+              </div>
+            )}
+          </div>
+          {resultadoArchivo && (
+            <div className={`rounded-lg px-4 py-3 text-sm ${resultadoArchivo.ok ? 'bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400' : 'bg-destructive/10 border border-destructive/20 text-destructive'}`}>
+              <div className="flex items-center gap-2 font-medium mb-1">
+                {resultadoArchivo.ok ? <CheckCircle className="size-4" /> : <AlertTriangle className="size-4" />}
+                {resultadoArchivo.msg}
+              </div>
+              {resultadoArchivo.detalle && (
+                <ul className="text-xs space-y-0.5 mt-1 text-muted-foreground">
+                  <li>Turnos archivados: {resultadoArchivo.detalle.turnos}</li>
+                  <li>Pagos archivados: {resultadoArchivo.detalle.pagos}</li>
+                  <li>Ventas archivadas: {resultadoArchivo.detalle.ventas}</li>
+                  <li>Gastos archivados: {resultadoArchivo.detalle.gastos}</li>
+                  <li>Retiros archivados: {resultadoArchivo.detalle.retiros}</li>
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
