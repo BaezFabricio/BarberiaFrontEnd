@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone,
   CreditCard, LayoutDashboard, Plus, ChevronRight, Star, TrendingUp,
-  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User, Scissors, Clock, Save,
+  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User, Scissors, Clock, Save, Trash2,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -33,7 +33,9 @@ type TurnoPendienteCobro = {
 }
 type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number }
 type Tab = 'hoy' | 'agenda' | 'stats' | 'caja' | 'productos' | 'horarios'
-type HorarioDia = { dia_semana: number; hora_apertura: string; hora_cierre: string; activo: boolean }
+type Rango = { hora_apertura: string; hora_cierre: string }
+type DiaConfig = { activo: boolean; rangos: Rango[] }
+type HorariosEditor = Record<number, DiaConfig>
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -109,14 +111,23 @@ export default function BarberoPage() {
   const [guardandoSD, setGuardandoSD] = useState(false)
   const [errorSD,  setErrorSD]        = useState('')
 
-  const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-  const horarioVacio = (): HorarioDia[] => DIAS_SEMANA.slice(1).map((_, i) => ({
-    dia_semana: i + 1,
-    hora_apertura: '09:00',
-    hora_cierre: '19:00',
-    activo: i < 5,
-  }))
-  const [horarios, setHorarios] = useState<HorarioDia[]>(horarioVacio)
+  const DIAS_CONFIG = [
+    { num: 1, label: 'Lunes' }, { num: 2, label: 'Martes' }, { num: 3, label: 'Miércoles' },
+    { num: 4, label: 'Jueves' }, { num: 5, label: 'Viernes' }, { num: 6, label: 'Sábado' },
+    { num: 7, label: 'Domingo' },
+  ]
+  const initEditor = (data: { dia_semana: number; hora_apertura: string; hora_cierre: string }[]): HorariosEditor => {
+    const map: HorariosEditor = {}
+    DIAS_CONFIG.forEach(d => {
+      const rangos = data.filter(h => h.dia_semana === d.num)
+        .map(h => ({ hora_apertura: h.hora_apertura.slice(0, 5), hora_cierre: h.hora_cierre.slice(0, 5) }))
+      map[d.num] = rangos.length > 0
+        ? { activo: true, rangos }
+        : { activo: false, rangos: [{ hora_apertura: '09:00', hora_cierre: '19:00' }] }
+    })
+    return map
+  }
+  const [editor, setEditor] = useState<HorariosEditor>(() => initEditor([]))
   const [guardandoHorarios, setGuardandoHorarios] = useState(false)
   const [errorHorarios, setErrorHorarios] = useState('')
   const [okHorarios, setOkHorarios] = useState(false)
@@ -138,16 +149,8 @@ export default function BarberoPage() {
     }).catch(() => {})
     api.get<Servicio[]>('/servicios').then(setServicios).catch(() => {})
     api.get<ConfigBarberia>('/mi-barberia').then(d => setOrdenLlegada(d.orden_llegada ?? true)).catch(() => {})
-    api.get<{ dia_semana: number; hora_apertura: string; hora_cierre: string }[]>('/mi-horario').then(data => {
-      if (data.length > 0) {
-        setHorarios(horarioVacio().map(h => {
-          const found = data.find(d => d.dia_semana === h.dia_semana)
-          return found
-            ? { ...h, hora_apertura: found.hora_apertura.slice(0, 5), hora_cierre: found.hora_cierre.slice(0, 5), activo: true }
-            : { ...h, activo: false }
-        }))
-      }
-    }).catch(() => {})
+    api.get<{ dia_semana: number; hora_apertura: string; hora_cierre: string }[]>('/mi-horario')
+      .then(data => setEditor(initEditor(data))).catch(() => {})
   }, [recargar])
 
   const cambiarEstado = async (id: number, estado: string) => {
@@ -264,13 +267,22 @@ export default function BarberoPage() {
   })
 
   const guardarHorarios = async () => {
-    setGuardandoHorarios(true); setErrorHorarios(''); setOkHorarios(false)
+    setErrorHorarios(''); setOkHorarios(false)
+    for (const d of DIAS_CONFIG) {
+      const dia = editor[d.num]
+      if (!dia?.activo) continue
+      for (const r of dia.rangos) {
+        if (r.hora_apertura >= r.hora_cierre)
+          return setErrorHorarios(`${d.label}: la hora de inicio debe ser menor que la de fin.`)
+      }
+    }
+    setGuardandoHorarios(true)
     try {
-      const payload = horarios.filter(h => h.activo).map(h => ({
-        dia_semana: h.dia_semana,
-        hora_apertura: h.hora_apertura,
-        hora_cierre: h.hora_cierre,
-      }))
+      const payload: { dia_semana: number; hora_apertura: string; hora_cierre: string }[] = []
+      DIAS_CONFIG.forEach(d => {
+        const dia = editor[d.num]
+        if (dia?.activo) dia.rangos.forEach(r => payload.push({ dia_semana: d.num, hora_apertura: r.hora_apertura, hora_cierre: r.hora_cierre }))
+      })
       await api.put('/mi-horario', payload)
       setOkHorarios(true)
       setTimeout(() => setOkHorarios(false), 3000)
@@ -280,6 +292,24 @@ export default function BarberoPage() {
       setGuardandoHorarios(false)
     }
   }
+
+  const toggleDiaH = (dia: number, activo: boolean) =>
+    setEditor(prev => ({ ...prev, [dia]: { ...prev[dia], activo } }))
+  const setRangoH = (dia: number, idx: number, field: keyof Rango, value: string) =>
+    setEditor(prev => {
+      const rangos = [...prev[dia].rangos]; rangos[idx] = { ...rangos[idx], [field]: value }
+      return { ...prev, [dia]: { ...prev[dia], rangos } }
+    })
+  const agregarRangoH = (dia: number) =>
+    setEditor(prev => {
+      const ultimo = prev[dia].rangos[prev[dia].rangos.length - 1]
+      return { ...prev, [dia]: { ...prev[dia], rangos: [...prev[dia].rangos, { hora_apertura: ultimo.hora_cierre, hora_cierre: '20:00' }] } }
+    })
+  const quitarRangoH = (dia: number, idx: number) =>
+    setEditor(prev => {
+      const rangos = prev[dia].rangos.filter((_, i) => i !== idx)
+      return { ...prev, [dia]: { ...prev[dia], rangos: rangos.length ? rangos : [{ hora_apertura: '09:00', hora_cierre: '19:00' }] } }
+    })
 
   // Nav items
   const navItems: { id: Tab; icon: React.ReactNode; label: string; show: boolean }[] = [
@@ -584,45 +614,53 @@ export default function BarberoPage() {
           {/* ── HORARIOS ── */}
           {tab === 'horarios' && (
             <div className="p-4 md:p-6 max-w-lg">
-              <p className="text-xs text-muted-foreground mb-4">Configurá los días y horarios en los que atendés. Esto determina los turnos disponibles para tus clientes.</p>
+              <p className="text-xs text-muted-foreground mb-4">Configurá los días y horarios en los que atendés. Podés agregar múltiples rangos por día (ej: mañana y tarde).</p>
               <div className="space-y-2">
-                {horarios.map((h, i) => (
-                  <div key={h.dia_semana} className={cn('rounded-xl border px-4 py-3 transition-colors', h.activo ? 'border-border/50 bg-card/40' : 'border-border/20 bg-card/10 opacity-60')}>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
+                {DIAS_CONFIG.map(d => {
+                  const dia = editor[d.num] ?? { activo: false, rangos: [{ hora_apertura: '09:00', hora_cierre: '19:00' }] }
+                  return (
+                    <div key={d.num} className={cn('rounded-xl border px-4 py-3 transition-colors', dia.activo ? 'border-border/50 bg-card/40' : 'border-border/20 bg-card/10 opacity-60')}>
+                      <label className="flex items-center gap-2 cursor-pointer mb-2">
                         <input
                           type="checkbox"
-                          checked={h.activo}
-                          onChange={e => setHorarios(prev => prev.map((x, j) => j === i ? { ...x, activo: e.target.checked } : x))}
+                          checked={dia.activo}
+                          onChange={e => toggleDiaH(d.num, e.target.checked)}
                           className="size-4 accent-primary"
                         />
-                        <span className="text-sm font-medium">{DIAS_SEMANA[h.dia_semana]}</span>
+                        <span className="text-sm font-medium">{d.label}</span>
                       </label>
+                      {dia.activo && (
+                        <div className="space-y-2 pl-6">
+                          {dia.rangos.map((r, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="time"
+                                value={r.hora_apertura}
+                                onChange={e => setRangoH(d.num, idx, 'hora_apertura', e.target.value)}
+                                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                              />
+                              <span className="text-xs text-muted-foreground">–</span>
+                              <input
+                                type="time"
+                                value={r.hora_cierre}
+                                onChange={e => setRangoH(d.num, idx, 'hora_cierre', e.target.value)}
+                                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                              />
+                              {dia.rangos.length > 1 && (
+                                <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={() => quitarRangoH(d.num, idx)}>
+                                  <Trash2 className="size-3.5 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground px-1" onClick={() => agregarRangoH(d.num)}>
+                            <Plus className="size-3" /> Agregar rango
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {h.activo && (
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 space-y-1">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Desde</p>
-                          <Select value={h.hora_apertura} onValueChange={v => setHorarios(prev => prev.map((x, j) => j === i ? { ...x, hora_apertura: v } : x))}>
-                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {HORAS.map(hr => <SelectItem key={hr} value={hr}>{hr}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hasta</p>
-                          <Select value={h.hora_cierre} onValueChange={v => setHorarios(prev => prev.map((x, j) => j === i ? { ...x, hora_cierre: v } : x))}>
-                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {HORAS.map(hr => <SelectItem key={hr} value={hr}>{hr}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               {errorHorarios && <p className="mt-3 text-sm text-destructive">{errorHorarios}</p>}
               {okHorarios && <p className="mt-3 text-sm text-green-500">Horarios guardados correctamente.</p>}
