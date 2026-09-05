@@ -38,8 +38,11 @@ type Venta = {
   barbero: { persona: { nombre_completo: string } }
   cliente?: { persona: { nombre_completo: string } }
 }
+type BarberoItem = { idusuario: number; persona: { nombre_completo: string } }
+type ServicioItem = { idservicio: number; nombre_servicio: string; precio: number; duracion_minutos: number }
 
 const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n)
+const ahoraStr = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
 const fmtFecha = (f: string) => new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
 
 const hoy = () => new Date().toISOString().split('T')[0]
@@ -67,6 +70,14 @@ export default function PagosPage() {
   const [guardandoVenta, setGuardandoVenta] = useState(false)
   const [errorVenta, setErrorVenta] = useState('')
 
+  const [modalSD, setModalSD] = useState(false)
+  const [barberosList, setBarberosList] = useState<BarberoItem[]>([])
+  const [serviciosList, setServiciosList] = useState<ServicioItem[]>([])
+  const FORM_SD0 = { idusuario_barbero: '', idservicio: '', nombre_cliente: '', fecha: hoy(), hora_inicio: '', metodo_pago: 'efectivo', monto: '' }
+  const [formSD, setFormSD] = useState(FORM_SD0)
+  const [guardandoSD, setGuardandoSD] = useState(false)
+  const [errorSD, setErrorSD] = useState('')
+
   const cargar = async () => {
     try {
       const [p, r, v] = await Promise.all([
@@ -88,7 +99,35 @@ export default function PagosPage() {
   }
 
   useEffect(() => { cargar() }, [desde, hasta])
-  useEffect(() => { cargarPendientes(); cargarProductos() }, [])
+  useEffect(() => {
+    cargarPendientes(); cargarProductos()
+    api.get<BarberoItem[]>('/barberos').then(setBarberosList).catch(() => {})
+    api.get<ServicioItem[]>('/servicios').then(setServiciosList).catch(() => {})
+  }, [])
+
+  const registrarServicioDirecto = async () => {
+    setGuardandoSD(true); setErrorSD('')
+    try {
+      const servicio = serviciosList.find(s => s.idservicio === Number(formSD.idservicio))
+      if (!servicio) throw new Error('Seleccioná un servicio.')
+      if (!formSD.hora_inicio) throw new Error('Ingresá la hora.')
+      const [h, m] = formSD.hora_inicio.split(':').map(Number)
+      const finMin = h * 60 + m + servicio.duracion_minutos
+      const hora_fin = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`
+      const turno = await api.post<{ idagenda: number }>('/turnos', {
+        idusuario_barbero: Number(formSD.idusuario_barbero),
+        idservicio: Number(formSD.idservicio),
+        nombre_cliente: formSD.nombre_cliente || 'Cliente',
+        fecha: formSD.fecha,
+        hora_inicio: formSD.hora_inicio,
+        hora_fin,
+        tipo_alta: 'orden_de_llegada',
+      })
+      await api.post('/pagos', { idagenda: turno.idagenda, monto_pago: Number(formSD.monto), metodo_pago: formSD.metodo_pago })
+      setModalSD(false); setFormSD(FORM_SD0); cargar(); cargarPendientes()
+    } catch (e: unknown) { setErrorSD(e instanceof Error ? e.message : 'Error al registrar') }
+    finally { setGuardandoSD(false) }
+  }
 
   const registrarVenta = async () => {
     setGuardandoVenta(true); setErrorVenta('')
@@ -154,6 +193,9 @@ export default function PagosPage() {
             <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-32 text-sm" />
             <span className="text-muted-foreground text-sm">—</span>
             <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-32 text-sm" />
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0, hora_inicio: ahoraStr() }); setModalSD(true) }}>
+              <Scissors className="size-4" /><span className="hidden sm:inline">Servicio Directo</span>
+            </Button>
             <Button size="sm" className="gap-2" onClick={() => { setErrorVenta(''); setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setModalVenta(true) }}>
               <ShoppingBag className="size-4" /><span className="hidden sm:inline">Nueva Venta</span>
             </Button>
@@ -321,6 +363,85 @@ export default function PagosPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal servicio directo */}
+      <Dialog open={modalSD} onOpenChange={setModalSD}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Servicio directo</DialogTitle>
+            <DialogDescription>Registrá un servicio sin turno previo y cobralo al instante.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Barbero</Label>
+              <Select value={formSD.idusuario_barbero} onValueChange={v => setFormSD(p => ({ ...p, idusuario_barbero: v }))}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
+                <SelectContent>
+                  {barberosList.map(b => (
+                    <SelectItem key={b.idusuario} value={String(b.idusuario)}>{b.persona.nombre_completo}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Servicio</Label>
+              <Select value={formSD.idservicio} onValueChange={v => {
+                const s = serviciosList.find(x => x.idservicio === Number(v))
+                setFormSD(p => ({ ...p, idservicio: v, monto: s ? String(s.precio) : p.monto }))
+              }}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+                <SelectContent>
+                  {serviciosList.map(s => (
+                    <SelectItem key={s.idservicio} value={String(s.idservicio)}>
+                      {s.nombre_servicio} — {fmt(s.precio)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nombre del cliente <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+              <Input placeholder="Juan García" value={formSD.nombre_cliente}
+                onChange={e => setFormSD(p => ({ ...p, nombre_cliente: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Fecha</Label>
+                <Input type="date" value={formSD.fecha} onChange={e => setFormSD(p => ({ ...p, fecha: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Hora</Label>
+                <Input type="time" value={formSD.hora_inicio} onChange={e => setFormSD(p => ({ ...p, hora_inicio: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Monto</Label>
+                <Input type="number" min="0" value={formSD.monto} onChange={e => setFormSD(p => ({ ...p, monto: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Método de pago</Label>
+                <Select value={formSD.metodo_pago} onValueChange={v => setFormSD(p => ({ ...p, metodo_pago: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                    <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                    <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {errorSD && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorSD}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalSD(false)}>Cancelar</Button>
+            <Button onClick={registrarServicioDirecto}
+              disabled={guardandoSD || !formSD.idusuario_barbero || !formSD.idservicio || !formSD.hora_inicio || !formSD.monto}>
+              {guardandoSD ? 'Registrando...' : 'Registrar y cobrar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal nueva venta */}
       <Dialog open={modalVenta} onOpenChange={setModalVenta}>

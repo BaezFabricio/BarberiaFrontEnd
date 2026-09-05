@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone,
   CreditCard, LayoutDashboard, Plus, ChevronRight, Star, TrendingUp,
-  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User,
+  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User, Scissors,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -96,6 +96,12 @@ export default function BarberoPage() {
   const [guardandoVenta, setGuardandoVenta] = useState(false)
   const [errorVenta,     setErrorVenta]     = useState('')
 
+  const [modalSD, setModalSD]         = useState(false)
+  const FORM_SD0_B = { idservicio: '', nombre_cliente: '', hora_inicio: '', metodo_pago: 'efectivo', monto: '' }
+  const [formSD,   setFormSD]         = useState(FORM_SD0_B)
+  const [guardandoSD, setGuardandoSD] = useState(false)
+  const [errorSD,  setErrorSD]        = useState('')
+
   const recargar = useCallback(() =>
     api.get<Turno[]>(`/turnos?fecha=${hoyStr()}`).then(setTurnos).catch(() => {}), [])
 
@@ -144,6 +150,32 @@ export default function BarberoPage() {
       setModalNuevo(false); setForm({ ...FORM0, fecha: hoyStr() }); recargar()
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Error al guardar.') }
     finally { setGuardando(false) }
+  }
+
+  const ahoraStr = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+  const hoyBarbero = () => new Date().toISOString().split('T')[0]
+
+  const registrarServicioDirectoBarbero = async () => {
+    setGuardandoSD(true); setErrorSD('')
+    try {
+      const servicio = servicios.find(s => s.idservicio === Number(formSD.idservicio))
+      if (!servicio) throw new Error('Seleccioná un servicio.')
+      if (!formSD.hora_inicio) throw new Error('Ingresá la hora.')
+      const [h, m] = formSD.hora_inicio.split(':').map(Number)
+      const finMin = h * 60 + m + servicio.duracion_minutos
+      const hora_fin = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`
+      const turno = await api.post<{ idagenda: number }>('/turnos', {
+        idservicio: Number(formSD.idservicio),
+        nombre_cliente: formSD.nombre_cliente || 'Cliente',
+        fecha: hoyBarbero(),
+        hora_inicio: formSD.hora_inicio,
+        hora_fin,
+        tipo_alta: 'orden_de_llegada',
+      })
+      await api.post('/pagos', { idagenda: turno.idagenda, monto_pago: Number(formSD.monto), metodo_pago: formSD.metodo_pago })
+      setModalSD(false); setFormSD(FORM_SD0_B); recargar(); cargarPendientesCobro()
+    } catch (e: unknown) { setErrorSD(e instanceof Error ? e.message : 'Error al registrar') }
+    finally { setGuardandoSD(false) }
   }
 
   const registrarVentaBarbero = async () => {
@@ -433,8 +465,14 @@ export default function BarberoPage() {
           {/* ── CAJA ── */}
           {tab === 'caja' && (
             <div className="p-4 md:p-6 space-y-2">
+              <button
+                onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0_B, hora_inicio: ahoraStr() }); setModalSD(true) }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors mb-2"
+              >
+                <Scissors className="size-4" />Cobro rápido (sin turno)
+              </button>
               {turnosPendientesCobro.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
               ) : turnosPendientesCobro.map(t => (
                 <div key={t.idagenda} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3.5">
                   <div className="flex-1 min-w-0">
@@ -491,6 +529,67 @@ export default function BarberoPage() {
       </nav>
 
       {/* ── Modales ──────────────────────────────────────────────────────────── */}
+
+      {/* Cobro rápido */}
+      <Dialog open={modalSD} onOpenChange={setModalSD}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cobro rápido</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Servicio</Label>
+              <Select value={formSD.idservicio} onValueChange={v => {
+                const s = servicios.find(x => x.idservicio === Number(v))
+                setFormSD(p => ({ ...p, idservicio: v, monto: s ? String(s.precio) : p.monto }))
+              }}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+                <SelectContent>
+                  {servicios.map(s => (
+                    <SelectItem key={s.idservicio} value={String(s.idservicio)}>
+                      {s.nombre_servicio} — ${Number(s.precio).toLocaleString('es-AR')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nombre del cliente <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+              <Input placeholder="Juan García" value={formSD.nombre_cliente}
+                onChange={e => setFormSD(p => ({ ...p, nombre_cliente: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Hora</Label>
+                <Input type="time" value={formSD.hora_inicio} onChange={e => setFormSD(p => ({ ...p, hora_inicio: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Monto</Label>
+                <Input type="number" min="0" value={formSD.monto} onChange={e => setFormSD(p => ({ ...p, monto: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Método de pago</Label>
+              <Select value={formSD.metodo_pago} onValueChange={v => setFormSD(p => ({ ...p, metodo_pago: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo"><span className="flex items-center gap-2"><Banknote className="size-4" />Efectivo</span></SelectItem>
+                  <SelectItem value="transferencia"><span className="flex items-center gap-2"><Smartphone className="size-4" />Transferencia</span></SelectItem>
+                  <SelectItem value="tarjeta"><span className="flex items-center gap-2"><CreditCard className="size-4" />Tarjeta</span></SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {errorSD && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorSD}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalSD(false)}>Cancelar</Button>
+            <Button onClick={registrarServicioDirectoBarbero}
+              disabled={guardandoSD || !formSD.idservicio || !formSD.hora_inicio || !formSD.monto}>
+              {guardandoSD ? 'Registrando...' : 'Cobrar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={modalCancelar} onOpenChange={v => { if (!guardandoCancelacion) setModalCancelar(v) }}>
         <DialogContent className="sm:max-w-sm">
