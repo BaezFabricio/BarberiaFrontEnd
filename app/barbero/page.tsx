@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   CheckCircle, XCircle, AlertCircle, DollarSign, Banknote, Smartphone,
   CreditCard, LayoutDashboard, Plus, ChevronRight, Star, TrendingUp,
-  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User, Scissors,
+  UserCheck, MoreVertical, Home, Calendar, BarChart2, Package, User, Scissors, Clock, Save,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -32,7 +32,8 @@ type TurnoPendienteCobro = {
   cliente?: { persona: { nombre_completo: string } }
 }
 type Servicio = { idservicio: number; nombre_servicio: string; duracion_minutos: number; precio: number }
-type Tab = 'hoy' | 'agenda' | 'stats' | 'caja' | 'productos'
+type Tab = 'hoy' | 'agenda' | 'stats' | 'caja' | 'productos' | 'horarios'
+type HorarioDia = { dia_semana: number; hora_apertura: string; hora_cierre: string; activo: boolean }
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,18 @@ export default function BarberoPage() {
   const [guardandoSD, setGuardandoSD] = useState(false)
   const [errorSD,  setErrorSD]        = useState('')
 
+  const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+  const horarioVacio = (): HorarioDia[] => DIAS_SEMANA.slice(1).map((_, i) => ({
+    dia_semana: i + 1,
+    hora_apertura: '09:00',
+    hora_cierre: '19:00',
+    activo: i < 5,
+  }))
+  const [horarios, setHorarios] = useState<HorarioDia[]>(horarioVacio)
+  const [guardandoHorarios, setGuardandoHorarios] = useState(false)
+  const [errorHorarios, setErrorHorarios] = useState('')
+  const [okHorarios, setOkHorarios] = useState(false)
+
   useEffect(() => { try { localStorage.setItem('barberoTab', tab) } catch { } }, [tab])
 
   const recargar = useCallback(() =>
@@ -125,6 +138,16 @@ export default function BarberoPage() {
     }).catch(() => {})
     api.get<Servicio[]>('/servicios').then(setServicios).catch(() => {})
     api.get<ConfigBarberia>('/mi-barberia').then(d => setOrdenLlegada(d.orden_llegada ?? true)).catch(() => {})
+    api.get<{ dia_semana: number; hora_apertura: string; hora_cierre: string }[]>('/mi-horario').then(data => {
+      if (data.length > 0) {
+        setHorarios(horarioVacio().map(h => {
+          const found = data.find(d => d.dia_semana === h.dia_semana)
+          return found
+            ? { ...h, hora_apertura: found.hora_apertura.slice(0, 5), hora_cierre: found.hora_cierre.slice(0, 5), activo: true }
+            : { ...h, activo: false }
+        }))
+      }
+    }).catch(() => {})
   }, [recargar])
 
   const cambiarEstado = async (id: number, estado: string) => {
@@ -240,6 +263,24 @@ export default function BarberoPage() {
     return { fecha: d.toISOString().split('T')[0], label: `${DIAS[d.getDay()]} ${d.getDate()}` }
   })
 
+  const guardarHorarios = async () => {
+    setGuardandoHorarios(true); setErrorHorarios(''); setOkHorarios(false)
+    try {
+      const payload = horarios.filter(h => h.activo).map(h => ({
+        dia_semana: h.dia_semana,
+        hora_apertura: h.hora_apertura,
+        hora_cierre: h.hora_cierre,
+      }))
+      await api.put('/mi-horario', payload)
+      setOkHorarios(true)
+      setTimeout(() => setOkHorarios(false), 3000)
+    } catch (e: unknown) {
+      setErrorHorarios(e instanceof Error ? e.message : 'Error al guardar')
+    } finally {
+      setGuardandoHorarios(false)
+    }
+  }
+
   // Nav items
   const navItems: { id: Tab; icon: React.ReactNode; label: string; show: boolean }[] = [
     { id: 'hoy',      icon: <Home className="size-5" />,      label: 'Hoy',      show: true },
@@ -247,6 +288,7 @@ export default function BarberoPage() {
     { id: 'stats',    icon: <BarChart2 className="size-5" />, label: 'Stats',    show: true },
     { id: 'caja',     icon: <DollarSign className="size-5" />,label: 'Caja',     show: !!perfil?.puede_cobrar },
     { id: 'productos',icon: <Package className="size-5" />,   label: 'Productos',show: !!perfil?.puede_vender },
+    { id: 'horarios', icon: <Clock className="size-5" />,     label: 'Horarios', show: true },
   ]
   const visibleNav = navItems.filter(n => n.show)
 
@@ -536,6 +578,57 @@ export default function BarberoPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── HORARIOS ── */}
+          {tab === 'horarios' && (
+            <div className="p-4 md:p-6 max-w-lg">
+              <p className="text-xs text-muted-foreground mb-4">Configurá los días y horarios en los que atendés. Esto determina los turnos disponibles para tus clientes.</p>
+              <div className="space-y-2">
+                {horarios.map((h, i) => (
+                  <div key={h.dia_semana} className={cn('rounded-xl border px-4 py-3 transition-colors', h.activo ? 'border-border/50 bg-card/40' : 'border-border/20 bg-card/10 opacity-60')}>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={h.activo}
+                          onChange={e => setHorarios(prev => prev.map((x, j) => j === i ? { ...x, activo: e.target.checked } : x))}
+                          className="size-4 accent-primary"
+                        />
+                        <span className="text-sm font-medium">{DIAS_SEMANA[h.dia_semana]}</span>
+                      </label>
+                    </div>
+                    {h.activo && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 space-y-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Desde</p>
+                          <Select value={h.hora_apertura} onValueChange={v => setHorarios(prev => prev.map((x, j) => j === i ? { ...x, hora_apertura: v } : x))}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {HORAS.map(hr => <SelectItem key={hr} value={hr}>{hr}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hasta</p>
+                          <Select value={h.hora_cierre} onValueChange={v => setHorarios(prev => prev.map((x, j) => j === i ? { ...x, hora_cierre: v } : x))}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {HORAS.map(hr => <SelectItem key={hr} value={hr}>{hr}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {errorHorarios && <p className="mt-3 text-sm text-destructive">{errorHorarios}</p>}
+              {okHorarios && <p className="mt-3 text-sm text-green-500">Horarios guardados correctamente.</p>}
+              <Button className="mt-4 w-full gap-2" onClick={guardarHorarios} disabled={guardandoHorarios}>
+                <Save className="size-4" />{guardandoHorarios ? 'Guardando...' : 'Guardar horarios'}
+              </Button>
             </div>
           )}
         </main>

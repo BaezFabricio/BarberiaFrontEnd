@@ -63,7 +63,8 @@ async function publicFetch<T>(path: string): Promise<T> {
 }
 
 type Servicio = { idservicio: number; nombre_servicio: string; descripcion: string; precio: number; duracion_minutos: number; imagen_url?: string | null }
-type Barbero = { idusuario: number; rating_promedio: number; nombre_completo: string; foto_url?: string | null; especialidades?: string | null }
+type HorarioBarbero = { dia_semana: number; hora_apertura: string; hora_cierre: string }
+type Barbero = { idusuario: number; rating_promedio: number; nombre_completo: string; foto_url?: string | null; especialidades?: string | null; horarios?: HorarioBarbero[] }
 type BarberiaPub = {
   nombre_negocio: string; subdominio: string; logo_url?: string | null; color_primario?: string
   telefono?: string | null; direccion?: string | null; correo_negocio?: string | null
@@ -781,6 +782,16 @@ export default function Landing() {
                               {b.especialidades.split(',').map(e => e.trim()).filter(Boolean).map(esp => (
                                 <span key={esp} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{esp}</span>
                               ))}
+                            </div>
+                          )}
+                          {b.horarios && b.horarios.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {['Lu','Ma','Mi','Ju','Vi','Sa','Do'].map((d, i) => {
+                                const h = b.horarios!.find(x => x.dia_semana === i + 1)
+                                return h ? (
+                                  <span key={d} className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium">{d} {h.hora_apertura}–{h.hora_cierre}</span>
+                                ) : null
+                              })}
                             </div>
                           )}
                         </div>
