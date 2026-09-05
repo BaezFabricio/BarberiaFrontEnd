@@ -296,7 +296,7 @@ export default function Landing() {
       </header>
 
       {/* ── HERO ── */}
-      <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden bg-[#0a0a0a]">
+      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-[#0a0a0a]">
         {/* Background image carousel */}
         {carouselImages.map((img, idx) => (
           <div key={img.url} className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: idx === carouselIdx ? 1 : 0 }}>
@@ -326,7 +326,7 @@ export default function Landing() {
 
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             <button
-              onClick={() => reservaRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth' })}
               className="rounded-xl px-8 py-4 text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               style={{
                 background: 'var(--primary)',
@@ -362,7 +362,7 @@ export default function Landing() {
       </section>
 
       {/* ── VENTAJAS ── */}
-      <section className="border-b border-border bg-card/40 py-10">
+      <section className="border-b border-border bg-card/40 py-6">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             {[
@@ -385,7 +385,7 @@ export default function Landing() {
       </section>
 
       {/* ── HORARIOS ── */}
-      <section className="bg-primary py-5 text-primary-foreground">
+      <section className="bg-primary py-3 text-primary-foreground">
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 text-sm font-medium">
             <div className="flex items-center gap-2.5">
@@ -411,10 +411,10 @@ export default function Landing() {
 
       {/* ── SOBRE NOSOTROS ── */}
       {barberia.descripcion && (
-        <section id="nosotros" className="py-14 scroll-mt-16">
+        <section id="nosotros" className="py-8 scroll-mt-16">
           <div className="container mx-auto px-4 max-w-5xl">
             {/* Label */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-4">
               <Scissors className="size-3" /> Quiénes somos
             </div>
 
@@ -447,9 +447,9 @@ export default function Landing() {
 
       {/* ── SERVICIOS ── */}
       {barberia.servicios.length > 0 && (
-        <section id="servicios" className="py-16 scroll-mt-16">
+        <section id="servicios" className="py-8 scroll-mt-16">
           <div className="container mx-auto px-4">
-            <div className="mb-10 text-center">
+            <div className="mb-5 text-center">
               <h2 className="text-3xl font-black tracking-tight">Nuestros servicios</h2>
               <p className="mt-2 text-muted-foreground">Todo lo que necesitás para verte impecable</p>
             </div>
@@ -496,9 +496,9 @@ export default function Landing() {
 
       {/* ── EQUIPO ── */}
       {barberia.barberos.length > 0 && (
-        <section id="equipo" className="py-16 bg-card/30 scroll-mt-16">
+        <section id="equipo" className="py-8 bg-card/30 scroll-mt-16">
           <div className="container mx-auto px-4">
-            <div className="mb-10 text-center">
+            <div className="mb-5 text-center">
               <h2 className="text-3xl font-black tracking-tight">Nuestro equipo</h2>
               <p className="mt-2 text-muted-foreground">Profesionales apasionados por su oficio</p>
             </div>
@@ -548,7 +548,7 @@ export default function Landing() {
 
       {/* ── GALERÍA ── */}
       {galeriaImages.length > 0 && (
-        <section className="py-16 bg-card/30">
+        <section className="py-8 bg-card/30">
           <div className="container mx-auto px-4 max-w-5xl">
 
             {/* Header siempre visible */}
@@ -636,9 +636,9 @@ export default function Landing() {
       `}</style>
 
       {/* ── RESERVA ── */}
-      <section id="reserva" ref={reservaRef} className="py-16 scroll-mt-16">
+      <section id="reserva" ref={reservaRef} className="py-10 scroll-mt-16">
         <div className="container mx-auto px-4">
-          <div className="mb-10 text-center">
+          <div className="mb-5 text-center">
             <h2 className="text-3xl font-black tracking-tight">Reservar turno</h2>
             <p className="mt-2 text-muted-foreground">Elegí servicio, barbero y horario en segundos</p>
           </div>
@@ -1067,7 +1067,7 @@ export default function Landing() {
 
           {/* ── BARRA TOTAL STICKY MOBILE ── */}
           {selectedServicio && step < 4 && (
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3 shadow-lg">
               <div>
                 <p className="text-xs text-muted-foreground">{totalDuracion} min · {1 + serviciosAdicionales.length} servicio{serviciosAdicionales.length !== 0 ? 's' : ''}</p>
                 <p className="font-black text-lg text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</p>
@@ -1092,9 +1092,9 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-border bg-card/60 pt-12 pb-6">
+      <footer className="border-t border-border bg-card/60 pt-8 pb-6">
         <div className="container mx-auto max-w-5xl px-4">
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-3 mb-10">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 mb-6">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 {barberia.logo_url && <img src={barberia.logo_url} alt={nombreBarberia} className="h-8 w-auto max-w-[36px] object-contain" />}

@@ -687,6 +687,12 @@ export default function BarberoPage() {
             <span className="text-[10px] font-medium">{item.label}</span>
           </button>
         ))}
+        {isOwnerOrAdmin && (
+          <a href="/admin" className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground">
+            <LayoutDashboard className="size-5" />
+            <span className="text-[10px] font-medium">Admin</span>
+          </a>
+        )}
       </nav>
 
       {/* ── Modales ──────────────────────────────────────────────────────────── */}
