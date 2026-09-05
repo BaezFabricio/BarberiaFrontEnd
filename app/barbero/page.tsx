@@ -65,7 +65,9 @@ export default function BarberoPage() {
   const [turnos, setTurnos]       = useState<Turno[]>([])
   const [perfil, setPerfil]       = useState<Perfil | null>(null)
   const [servicios, setServicios] = useState<Servicio[]>([])
-  const [tab, setTab]             = useState<Tab>('hoy')
+  const [tab, setTab]             = useState<Tab>(() => {
+    try { return (localStorage.getItem('barberoTab') as Tab) ?? 'hoy' } catch { return 'hoy' }
+  })
   const [ordenLlegada, setOrdenLlegada] = useState(true)
 
   const [turnosPendientesCobro, setTurnosPendientesCobro] = useState<TurnoPendienteCobro[]>([])
@@ -101,6 +103,8 @@ export default function BarberoPage() {
   const [formSD,   setFormSD]         = useState(FORM_SD0_B)
   const [guardandoSD, setGuardandoSD] = useState(false)
   const [errorSD,  setErrorSD]        = useState('')
+
+  useEffect(() => { try { localStorage.setItem('barberoTab', tab) } catch { } }, [tab])
 
   const recargar = useCallback(() =>
     api.get<Turno[]>(`/turnos?fecha=${hoyStr()}`).then(setTurnos).catch(() => {}), [])
@@ -472,7 +476,7 @@ export default function BarberoPage() {
                 <Scissors className="size-4" />Cobro rápido (sin turno)
               </button>
               {turnosPendientesCobro.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">Sin turnos pendientes de cobro</p>
               ) : turnosPendientesCobro.map(t => (
                 <div key={t.idagenda} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3.5">
                   <div className="flex-1 min-w-0">
@@ -485,6 +489,21 @@ export default function BarberoPage() {
                   </Button>
                 </div>
               ))}
+              {turnos.filter(t => t.estado === 'cobrado').length > 0 && (
+                <div className="mt-4">
+                  <p className="px-1 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Cobrados hoy</p>
+                  {turnos.filter(t => t.estado === 'cobrado').sort((a,b) => a.hora_inicio.localeCompare(b.hora_inicio)).map(t => (
+                    <div key={t.idagenda} className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-3 mb-2">
+                      <CheckCircle className="size-4 shrink-0 text-green-500" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium">{t.cliente?.persona.nombre_completo ?? 'Sin nombre'}</p>
+                        <p className="truncate text-xs text-muted-foreground">{t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}</p>
+                      </div>
+                      <span className="shrink-0 font-bold text-green-500">${Number(t.servicio.precio).toLocaleString('es-AR')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

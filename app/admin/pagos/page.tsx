@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { DollarSign, CreditCard, Banknote, Smartphone, Plus, Scissors, Calendar, ShoppingBag } from 'lucide-react'
+import { DollarSign, CreditCard, Banknote, Smartphone, Plus, Scissors, Calendar, ShoppingBag, ArrowDownCircle, CheckCircle2 } from 'lucide-react'
 import { api } from '@/lib/api'
 
 type Turno = {
@@ -40,6 +40,11 @@ type Venta = {
 }
 type BarberoItem = { idusuario: number; persona: { nombre_completo: string } }
 type ServicioItem = { idservicio: number; nombre_servicio: string; precio: number; duracion_minutos: number }
+type Retiro = {
+  idretiro: number; monto: string; descripcion: string | null; estado: 'pendiente' | 'devuelto'
+  fecha_retiro: string; fecha_devolucion: string | null
+  barbero: { idusuario: number; persona: { nombre_completo: string } }
+}
 
 const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n)
 const ahoraStr = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
@@ -70,6 +75,13 @@ export default function PagosPage() {
   const [guardandoVenta, setGuardandoVenta] = useState(false)
   const [errorVenta, setErrorVenta] = useState('')
 
+  const [retiros, setRetiros] = useState<Retiro[]>([])
+  const [modalRetiro, setModalRetiro] = useState(false)
+  const [formRetiro, setFormRetiro] = useState({ idusuario_barbero: '', monto: '', descripcion: '' })
+  const [guardandoRetiro, setGuardandoRetiro] = useState(false)
+  const [errorRetiro, setErrorRetiro] = useState('')
+  const [cobrando, setCobrando] = useState<number | null>(null)
+
   const [modalSD, setModalSD] = useState(false)
   const [barberosList, setBarberosList] = useState<BarberoItem[]>([])
   const [serviciosList, setServiciosList] = useState<ServicioItem[]>([])
@@ -99,11 +111,35 @@ export default function PagosPage() {
   }
 
   useEffect(() => { cargar() }, [desde, hasta])
+  const cargarRetiros = () => api.get<Retiro[]>('/retiros').then(setRetiros).catch(() => {})
+
   useEffect(() => {
-    cargarPendientes(); cargarProductos()
+    cargarPendientes(); cargarProductos(); cargarRetiros()
     api.get<BarberoItem[]>('/barberos').then(setBarberosList).catch(() => {})
     api.get<ServicioItem[]>('/servicios').then(setServiciosList).catch(() => {})
   }, [])
+
+  const registrarRetiro = async () => {
+    setGuardandoRetiro(true); setErrorRetiro('')
+    try {
+      await api.post('/retiros', { idusuario_barbero: Number(formRetiro.idusuario_barbero), monto: Number(formRetiro.monto), descripcion: formRetiro.descripcion || undefined })
+      setModalRetiro(false); setFormRetiro({ idusuario_barbero: '', monto: '', descripcion: '' }); cargarRetiros()
+    } catch (e: unknown) { setErrorRetiro(e instanceof Error ? e.message : 'Error') }
+    finally { setGuardandoRetiro(false) }
+  }
+
+  const cobrarRetiro = async (idretiro: number) => {
+    setCobrando(idretiro)
+    try { await api.patch(`/retiros/${idretiro}/cobrar`, {}); cargarRetiros() }
+    catch { }
+    finally { setCobrando(null) }
+  }
+
+  const retirosPendientesPorBarbero = barberosList.map(b => ({
+    barbero: b,
+    pendiente: retiros.filter(r => r.barbero?.idusuario === b.idusuario && r.estado === 'pendiente').reduce((s, r) => s + parseFloat(r.monto), 0),
+    items: retiros.filter(r => r.barbero?.idusuario === b.idusuario),
+  })).filter(x => x.items.length > 0)
 
   const registrarServicioDirecto = async () => {
     setGuardandoSD(true); setErrorSD('')
@@ -193,6 +229,9 @@ export default function PagosPage() {
             <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-32 text-sm" />
             <span className="text-muted-foreground text-sm">—</span>
             <Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-32 text-sm" />
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => { setErrorRetiro(''); setFormRetiro({ idusuario_barbero: '', monto: '', descripcion: '' }); setModalRetiro(true) }}>
+              <ArrowDownCircle className="size-4" /><span className="hidden sm:inline">Retiro</span>
+            </Button>
             <Button size="sm" variant="outline" className="gap-2" onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0, hora_inicio: ahoraStr() }); setModalSD(true) }}>
               <Scissors className="size-4" /><span className="hidden sm:inline">Servicio Directo</span>
             </Button>
@@ -279,6 +318,58 @@ export default function PagosPage() {
                   ))}
                 </TableBody>
               </Table></div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Retiros pendientes por barbero */}
+        {retirosPendientesPorBarbero.length > 0 && (
+          <Card className="border-orange-500/30 bg-orange-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <ArrowDownCircle className="size-4 text-orange-500" />
+                Retiros de caja pendientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {retirosPendientesPorBarbero.map(({ barbero, pendiente, items }) => (
+                <div key={barbero.idusuario} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{barbero.persona.nombre_completo}</span>
+                    {pendiente > 0 && (
+                      <Badge variant="outline" className="text-orange-500 border-orange-500/40 font-semibold">
+                        Debe {fmt(pendiente)}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    {items.map(r => (
+                      <div key={r.idretiro} className="flex items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm">
+                        <div className="flex flex-col">
+                          <span className={r.estado === 'devuelto' ? 'line-through text-muted-foreground' : 'font-medium'}>
+                            {fmt(parseFloat(r.monto))}
+                            {r.descripcion ? <span className="ml-2 text-muted-foreground font-normal">· {r.descripcion}</span> : null}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {fmtFecha(r.fecha_retiro)}
+                            {r.estado === 'devuelto' && r.fecha_devolucion ? ` · Devuelto ${fmtFecha(r.fecha_devolucion)}` : ''}
+                          </span>
+                        </div>
+                        {r.estado === 'pendiente' ? (
+                          <Button size="sm" variant="outline" className="h-7 gap-1 text-green-600 border-green-500/40 hover:bg-green-500/10"
+                            disabled={cobrando === r.idretiro}
+                            onClick={() => cobrarRetiro(r.idretiro)}>
+                            <CheckCircle2 className="size-3" />
+                            {cobrando === r.idretiro ? '...' : 'Devuelto'}
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="text-green-600 border-green-500/30 text-xs">Devuelto</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
@@ -438,6 +529,47 @@ export default function PagosPage() {
             <Button onClick={registrarServicioDirecto}
               disabled={guardandoSD || !formSD.idusuario_barbero || !formSD.idservicio || !formSD.hora_inicio || !formSD.monto}>
               {guardandoSD ? 'Registrando...' : 'Registrar y cobrar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal retiro de caja */}
+      <Dialog open={modalRetiro} onOpenChange={setModalRetiro}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Registrar retiro de caja</DialogTitle>
+            <DialogDescription>El barbero retira dinero en efectivo de la caja.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Barbero</Label>
+              <Select value={formRetiro.idusuario_barbero} onValueChange={v => setFormRetiro(p => ({ ...p, idusuario_barbero: v }))}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
+                <SelectContent>
+                  {barberosList.map(b => (
+                    <SelectItem key={b.idusuario} value={String(b.idusuario)}>{b.persona.nombre_completo}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Monto retirado</Label>
+              <Input type="number" min="0" placeholder="0" value={formRetiro.monto}
+                onChange={e => setFormRetiro(p => ({ ...p, monto: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Descripción <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+              <Input placeholder="Ej: adelanto de comisión" value={formRetiro.descripcion}
+                onChange={e => setFormRetiro(p => ({ ...p, descripcion: e.target.value }))} />
+            </div>
+            {errorRetiro && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorRetiro}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setModalRetiro(false)}>Cancelar</Button>
+            <Button onClick={registrarRetiro}
+              disabled={guardandoRetiro || !formRetiro.idusuario_barbero || !formRetiro.monto}>
+              {guardandoRetiro ? 'Guardando...' : 'Registrar retiro'}
             </Button>
           </DialogFooter>
         </DialogContent>
