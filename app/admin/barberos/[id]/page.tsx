@@ -110,16 +110,18 @@ export default function BarberDetailPage({ params }: { params: Promise<{ id: str
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'finalizado':
-        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Finalizado</Badge>
+      case 'pendiente':
+        return <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">Pendiente</Badge>
       case 'confirmado':
         return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Confirmado</Badge>
-      case 'reservado':
-        return <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">Reservado</Badge>
+      case 'atendido':
+        return <Badge className="bg-zinc-500/10 text-zinc-500 border-zinc-500/20">Atendido</Badge>
+      case 'cobrado':
+        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Cobrado</Badge>
       case 'cancelado':
         return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">Cancelado</Badge>
       case 'ausente':
-        return <Badge className="bg-gray-500/10 text-gray-500 border-gray-500/20">Ausente</Badge>
+        return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">Ausente</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }

@@ -82,36 +82,38 @@ export default function PanelBarbero() {
 
   // Calcular estadisticas del dia
   const turnosHoy = turnosState.length
-  const turnosCompletados = turnosState.filter(t => t.estado === 'finalizado').length
-  const turnosPendientes = turnosState.filter(t => ['reservado', 'confirmado'].includes(t.estado)).length
+  const turnosCompletados = turnosState.filter(t => ['atendido', 'cobrado'].includes(t.estado)).length
+  const turnosPendientes = turnosState.filter(t => ['pendiente', 'confirmado'].includes(t.estado)).length
   const ingresosDia = turnosState
-    .filter(t => t.estado === 'finalizado')
+    .filter(t => ['atendido', 'cobrado'].includes(t.estado))
     .reduce((sum, t) => sum + t.precioFinal, 0)
 
   // Obtener historial del cliente
   const getHistorialCliente = (clienteId: string) => {
-    return turnos.filter(t => t.clienteId === clienteId && t.estado === 'finalizado')
+    return turnos.filter(t => t.clienteId === clienteId && ['atendido', 'cobrado'].includes(t.estado))
   }
 
   // Obtener color del badge segun estado
   const getEstadoBadge = (estado: AppointmentStatus) => {
     const estilos: Record<AppointmentStatus, string> = {
-      reservado: "bg-blue-500/10 text-blue-500 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30",
+      pendiente:  "bg-blue-500/10 text-blue-500 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30",
       confirmado: "bg-green-500/10 text-green-500 border-green-500/20 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30",
-      finalizado: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20 dark:bg-zinc-500/20 dark:text-zinc-400 dark:border-zinc-500/30",
-      cancelado: "bg-red-500/10 text-red-500 border-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30",
-      ausente: "bg-orange-500/10 text-orange-500 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30"
+      atendido:   "bg-zinc-500/10 text-zinc-500 border-zinc-500/20 dark:bg-zinc-500/20 dark:text-zinc-400 dark:border-zinc-500/30",
+      cobrado:    "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30",
+      cancelado:  "bg-red-500/10 text-red-500 border-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30",
+      ausente:    "bg-orange-500/10 text-orange-500 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30"
     }
     return estilos[estado]
   }
 
   const getEstadoLabel = (estado: AppointmentStatus) => {
     const labels: Record<AppointmentStatus, string> = {
-      reservado: "Reservado",
+      pendiente:  "Pendiente",
       confirmado: "Confirmado",
-      finalizado: "Finalizado",
-      cancelado: "Cancelado",
-      ausente: "Ausente"
+      atendido:   "Atendido",
+      cobrado:    "Cobrado",
+      cancelado:  "Cancelado",
+      ausente:    "Ausente"
     }
     return labels[estado]
   }
@@ -120,12 +122,12 @@ export default function PanelBarbero() {
   const ahora = new Date()
   const horaActual = `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')}`
   const turnoActual = turnosState.find(t => 
-    ['reservado', 'confirmado'].includes(t.estado) && 
+    ['pendiente', 'confirmado'].includes(t.estado) &&
     t.horaInicio <= horaActual && 
     t.horaFin > horaActual
   )
   const proximoTurno = turnosState.find(t => 
-    ['reservado', 'confirmado'].includes(t.estado) && 
+    ['pendiente', 'confirmado'].includes(t.estado) &&
     t.horaInicio > horaActual
   )
 
@@ -342,7 +344,7 @@ export default function PanelBarbero() {
                 <Card 
                   key={turno.id} 
                   className={`bg-card border-border/80 transition-all hover:bg-muted/50 cursor-pointer w-full ${
-                    turno.estado === 'finalizado' ? 'opacity-50' : ''
+                    ['cobrado', 'cancelado'].includes(turno.estado) ? 'opacity-50' : ''
                   }`}
                   onClick={() => setSelectedTurno(turno)}
                 >

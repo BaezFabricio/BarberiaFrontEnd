@@ -400,7 +400,7 @@ export const turnos: Appointment[] = [
     fecha: formatDate(hoy),
     horaInicio: '10:00',
     horaFin: '10:40',
-    estado: 'reservado',
+    estado: 'pendiente',
     tipo: 'reserva_previa',
     precioFinal: 3500,
     fechaCreacion: formatDate(new Date(hoy.getTime() - 1 * 24 * 60 * 60 * 1000))
@@ -432,7 +432,7 @@ export const turnos: Appointment[] = [
     fecha: formatDate(hoy),
     horaInicio: '11:00',
     horaFin: '11:40',
-    estado: 'reservado',
+    estado: 'pendiente',
     tipo: 'reserva_previa',
     precioFinal: 3500,
     fechaCreacion: formatDate(new Date(hoy.getTime() - 3 * 24 * 60 * 60 * 1000))
@@ -448,7 +448,7 @@ export const turnos: Appointment[] = [
     fecha: formatDate(hoy),
     horaInicio: '09:30',
     horaFin: '10:00',
-    estado: 'finalizado',
+    estado: 'atendido',
     tipo: 'reserva_previa',
     precioFinal: 2500,
     fechaCreacion: formatDate(new Date(hoy.getTime() - 2 * 24 * 60 * 60 * 1000))
@@ -464,7 +464,7 @@ export const turnos: Appointment[] = [
     fecha: formatDate(hoy),
     horaInicio: '11:00',
     horaFin: '12:00',
-    estado: 'reservado',
+    estado: 'pendiente',
     tipo: 'reserva_previa',
     precioFinal: 5500,
     fechaCreacion: formatDate(new Date(hoy.getTime() - 1 * 24 * 60 * 60 * 1000))
@@ -480,7 +480,7 @@ export const turnos: Appointment[] = [
     fecha: formatDate(hoy),
     horaInicio: '14:00',
     horaFin: '14:40',
-    estado: 'reservado',
+    estado: 'pendiente',
     tipo: 'reserva_previa',
     precioFinal: 3500,
     fechaCreacion: formatDate(new Date(hoy.getTime() - 4 * 24 * 60 * 60 * 1000))
@@ -496,7 +496,7 @@ export const turnos: Appointment[] = [
     fecha: formatDate(new Date(hoy.getTime() + 1 * 24 * 60 * 60 * 1000)),
     horaInicio: '10:00',
     horaFin: '10:50',
-    estado: 'reservado',
+    estado: 'pendiente',
     tipo: 'reserva_previa',
     precioFinal: 4500,
     fechaCreacion: formatDate(hoy)

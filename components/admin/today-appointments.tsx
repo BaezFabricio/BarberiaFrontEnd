@@ -1,6 +1,6 @@
 'use client'
 
-import { Clock, MoreHorizontal, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Clock, MoreHorizontal, CheckCircle, XCircle, AlertCircle, DollarSign, UserCheck } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,12 +15,12 @@ import { Appointment, AppointmentStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ElementType }> = {
-  pendiente:  { label: 'Pendiente',  variant: 'secondary',    icon: Clock },
-  reservado:  { label: 'Reservado',  variant: 'secondary',    icon: Clock },
-  confirmado: { label: 'Confirmado', variant: 'default',      icon: CheckCircle },
-  finalizado: { label: 'Finalizado', variant: 'outline',      icon: CheckCircle },
-  cancelado:  { label: 'Cancelado',  variant: 'destructive',  icon: XCircle },
-  ausente:    { label: 'Ausente',    variant: 'destructive',  icon: AlertCircle },
+  pendiente:  { label: 'Pendiente',  variant: 'secondary',   icon: Clock },
+  confirmado: { label: 'Confirmado', variant: 'default',     icon: CheckCircle },
+  atendido:   { label: 'Atendido',   variant: 'outline',     icon: UserCheck },
+  cobrado:    { label: 'Cobrado',    variant: 'outline',     icon: DollarSign },
+  cancelado:  { label: 'Cancelado',  variant: 'destructive', icon: XCircle },
+  ausente:    { label: 'Ausente',    variant: 'destructive', icon: AlertCircle },
 }
 
 const defaultStatus = { label: 'Pendiente', variant: 'secondary' as const, icon: Clock }
@@ -71,7 +71,7 @@ export function TodayAppointments({ appointments, onStatusChange }: TodayAppoint
                   key={appointment.id}
                   className={cn(
                     'flex items-center gap-2 px-3 py-4 md:gap-4 md:px-6 transition-colors hover:bg-muted/50',
-                    appointment.estado === 'finalizado' && 'opacity-60'
+                    (appointment.estado === 'cobrado' || appointment.estado === 'cancelado') && 'opacity-60'
                   )}
                 >
                   <div className="flex w-16 flex-col items-center">
@@ -112,28 +112,26 @@ export function TodayAppointments({ appointments, onStatusChange }: TodayAppoint
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onStatusChange?.(appointment.id, 'confirmado')}>
-                        <CheckCircle className="mr-2 size-4" />
-                        Confirmar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onStatusChange?.(appointment.id, 'finalizado')}>
-                        <CheckCircle className="mr-2 size-4" />
-                        Finalizar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => onStatusChange?.(appointment.id, 'ausente')}
-                        className="text-destructive"
-                      >
-                        <AlertCircle className="mr-2 size-4" />
-                        Marcar ausente
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => onStatusChange?.(appointment.id, 'cancelado')}
-                        className="text-destructive"
-                      >
-                        <XCircle className="mr-2 size-4" />
-                        Cancelar
-                      </DropdownMenuItem>
+                      {appointment.estado === 'pendiente' && (
+                        <DropdownMenuItem onClick={() => onStatusChange?.(appointment.id, 'confirmado')}>
+                          <CheckCircle className="mr-2 size-4" />Confirmar
+                        </DropdownMenuItem>
+                      )}
+                      {['pendiente', 'confirmado'].includes(appointment.estado) && (
+                        <DropdownMenuItem onClick={() => onStatusChange?.(appointment.id, 'atendido')}>
+                          <UserCheck className="mr-2 size-4" />Marcar atendido
+                        </DropdownMenuItem>
+                      )}
+                      {!['cobrado', 'cancelado', 'ausente'].includes(appointment.estado) && (
+                        <DropdownMenuItem onClick={() => onStatusChange?.(appointment.id, 'ausente')} className="text-destructive">
+                          <AlertCircle className="mr-2 size-4" />Marcar ausente
+                        </DropdownMenuItem>
+                      )}
+                      {!['cobrado', 'cancelado'].includes(appointment.estado) && (
+                        <DropdownMenuItem onClick={() => onStatusChange?.(appointment.id, 'cancelado')} className="text-destructive">
+                          <XCircle className="mr-2 size-4" />Cancelar
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

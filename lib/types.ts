@@ -2,11 +2,12 @@
 
 export type UserRole = 'administrador' | 'barbero' | 'cliente';
 
-export type AppointmentStatus = 
-  | 'reservado' 
-  | 'confirmado' 
-  | 'finalizado' 
-  | 'cancelado' 
+export type AppointmentStatus =
+  | 'pendiente'
+  | 'confirmado'
+  | 'atendido'
+  | 'cobrado'
+  | 'cancelado'
   | 'ausente';
 
 export type AppointmentType = 'reserva_previa' | 'orden_llegada';

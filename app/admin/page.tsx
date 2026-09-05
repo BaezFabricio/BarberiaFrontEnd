@@ -200,7 +200,7 @@ export default function AdminDashboard() {
         <div className="grid gap-6 lg:grid-cols-3 min-w-0">
           <div className="lg:col-span-2 min-w-0">
             <TodayAppointments appointments={turnosAdaptados as any} onStatusChange={async (id, estado) => {
-              await api.put(`/turnos/${id}/estado`, { estado })
+              await api.patch(`/turnos/${id}/estado`, { estado })
               cargarTurnos()
             }} />
           </div>
