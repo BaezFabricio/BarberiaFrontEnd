@@ -92,8 +92,10 @@ export default function AgendaPage() {
 
   // Formulario nuevo turno
   const [nuevoTurno, setNuevoTurno] = useState({
-    nombre_cliente: '', telefono_cliente: '', correo_electronico: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '',
+    nombre_cliente: '', telefono_cliente: '', correo_electronico: '', idusuario_barbero: '', hora_inicio: '', fecha: '',
   })
+  const [serviciosNuevo, setServiciosNuevo] = useState<Servicio[]>([])
+  const [pickerNuevo, setPickerNuevo] = useState('')
 
   const cargarTurnos = useCallback(async () => {
     try {
@@ -148,21 +150,23 @@ export default function AgendaPage() {
   }
 
   const handleCrearTurno = async () => {
-    const servicio = servicios.find(s => s.idservicio === Number(nuevoTurno.idservicio))
-    if (!servicio || !nuevoTurno.idusuario_barbero || !nuevoTurno.hora_inicio || !nuevoTurno.fecha) return
+    if (serviciosNuevo.length === 0 || !nuevoTurno.idusuario_barbero || !nuevoTurno.hora_inicio || !nuevoTurno.fecha) return
+    const duracionTotal = serviciosNuevo.reduce((s, x) => s + x.duracion_minutos, 0)
     try {
       await api.post('/turnos', {
         nombre_cliente: nuevoTurno.nombre_cliente || undefined,
         telefono_cliente: nuevoTurno.telefono_cliente || undefined,
         correo_electronico: nuevoTurno.correo_electronico || undefined,
         idusuario_barbero: Number(nuevoTurno.idusuario_barbero),
-        idservicio: Number(nuevoTurno.idservicio),
+        idservicio: serviciosNuevo[0].idservicio,
+        servicios_ids: serviciosNuevo.map(s => s.idservicio),
         fecha: nuevoTurno.fecha,
         hora_inicio: `${nuevoTurno.hora_inicio}:00`,
-        hora_fin: calcularHoraFin(nuevoTurno.hora_inicio, servicio.duracion_minutos),
+        hora_fin: calcularHoraFin(nuevoTurno.hora_inicio, duracionTotal),
       })
       setIsCreateDialogOpen(false)
-      setNuevoTurno({ nombre_cliente: '', telefono_cliente: '', correo_electronico: '', idservicio: '', idusuario_barbero: '', hora_inicio: '', fecha: '' })
+      setNuevoTurno({ nombre_cliente: '', telefono_cliente: '', correo_electronico: '', idusuario_barbero: '', hora_inicio: '', fecha: '' })
+      setServiciosNuevo([]); setPickerNuevo('')
       cargarTurnos()
     } catch (err) { console.error(err) }
   }
@@ -233,17 +237,41 @@ export default function AgendaPage() {
                     onChange={e => setNuevoTurno(p => ({ ...p, correo_electronico: e.target.value }))} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Servicio</Label>
-                  <Select value={nuevoTurno.idservicio} onValueChange={v => setNuevoTurno(p => ({ ...p, idservicio: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+                  <Label>Servicios</Label>
+                  <Select value={pickerNuevo} onValueChange={v => {
+                    const s = servicios.find(x => x.idservicio === Number(v))
+                    if (s && !serviciosNuevo.find(x => x.idservicio === s.idservicio)) setServiciosNuevo(p => [...p, s])
+                    setPickerNuevo('')
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Agregar servicio…" /></SelectTrigger>
                     <SelectContent>
-                      {servicios.filter(s => s.estado === 'activo').map(s => (
+                      {servicios.filter(s => s.estado === 'activo' && !serviciosNuevo.find(x => x.idservicio === s.idservicio)).map(s => (
                         <SelectItem key={s.idservicio} value={String(s.idservicio)}>
                           {s.nombre_servicio} — {s.duracion_minutos}min — ${Number(s.precio).toLocaleString('es-AR')}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {serviciosNuevo.length > 0 && (
+                    <div className="space-y-1">
+                      {serviciosNuevo.map(s => (
+                        <div key={s.idservicio} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-sm">
+                          <span>{s.nombre_servicio} <span className="text-muted-foreground">({s.duracion_minutos}min)</span></span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">${Number(s.precio).toLocaleString('es-AR')}</span>
+                            <button type="button" className="text-muted-foreground hover:text-destructive text-base leading-none"
+                              onClick={() => setServiciosNuevo(p => p.filter(x => x.idservicio !== s.idservicio))}>×</button>
+                          </div>
+                        </div>
+                      ))}
+                      {serviciosNuevo.length > 1 && (
+                        <div className="flex justify-between px-3 py-1 text-sm font-semibold border-t">
+                          <span>Total</span>
+                          <span>${serviciosNuevo.reduce((a,s)=>a+s.precio,0).toLocaleString('es-AR')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <Label>Barbero</Label>
@@ -281,7 +309,7 @@ export default function AgendaPage() {
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancelar</Button>
                 <Button
                   onClick={handleCrearTurno}
-                  disabled={!nuevoTurno.idservicio || !nuevoTurno.idusuario_barbero || !nuevoTurno.hora_inicio || !nuevoTurno.fecha}
+                  disabled={serviciosNuevo.length === 0 || !nuevoTurno.idusuario_barbero || !nuevoTurno.hora_inicio || !nuevoTurno.fecha}
                 >
                   Crear Turno
                 </Button>

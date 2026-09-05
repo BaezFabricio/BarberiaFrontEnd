@@ -85,8 +85,10 @@ export default function PagosPage() {
   const [modalSD, setModalSD] = useState(false)
   const [barberosList, setBarberosList] = useState<BarberoItem[]>([])
   const [serviciosList, setServiciosList] = useState<ServicioItem[]>([])
-  const FORM_SD0 = { idusuario_barbero: '', idservicio: '', nombre_cliente: '', fecha: hoy(), hora_inicio: '', metodo_pago: 'efectivo', monto: '' }
+  const FORM_SD0 = { idusuario_barbero: '', nombre_cliente: '', fecha: hoy(), hora_inicio: '', metodo_pago: 'efectivo', monto: '' }
   const [formSD, setFormSD] = useState(FORM_SD0)
+  const [serviciosSD, setServiciosSD] = useState<ServicioItem[]>([])
+  const [pickerSD, setPickerSD] = useState('')
   const [guardandoSD, setGuardandoSD] = useState(false)
   const [errorSD, setErrorSD] = useState('')
 
@@ -144,15 +146,16 @@ export default function PagosPage() {
   const registrarServicioDirecto = async () => {
     setGuardandoSD(true); setErrorSD('')
     try {
-      const servicio = serviciosList.find(s => s.idservicio === Number(formSD.idservicio))
-      if (!servicio) throw new Error('Seleccioná un servicio.')
+      if (serviciosSD.length === 0) throw new Error('Seleccioná al menos un servicio.')
       if (!formSD.hora_inicio) throw new Error('Ingresá la hora.')
+      const duracionTotal = serviciosSD.reduce((s, x) => s + x.duracion_minutos, 0)
       const [h, m] = formSD.hora_inicio.split(':').map(Number)
-      const finMin = h * 60 + m + servicio.duracion_minutos
+      const finMin = h * 60 + m + duracionTotal
       const hora_fin = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`
       const turno = await api.post<{ idagenda: number }>('/turnos', {
         idusuario_barbero: Number(formSD.idusuario_barbero),
-        idservicio: Number(formSD.idservicio),
+        idservicio: serviciosSD[0].idservicio,
+        servicios_ids: serviciosSD.map(s => s.idservicio),
         nombre_cliente: formSD.nombre_cliente || 'Cliente',
         fecha: formSD.fecha,
         hora_inicio: formSD.hora_inicio,
@@ -160,7 +163,7 @@ export default function PagosPage() {
         tipo_alta: 'orden_de_llegada',
       })
       await api.post('/pagos', { idagenda: turno.idagenda, monto_pago: Number(formSD.monto), metodo_pago: formSD.metodo_pago })
-      setModalSD(false); setFormSD(FORM_SD0); cargar(); cargarPendientes()
+      setModalSD(false); setFormSD(FORM_SD0); setServiciosSD([]); setPickerSD(''); cargar(); cargarPendientes()
     } catch (e: unknown) { setErrorSD(e instanceof Error ? e.message : 'Error al registrar') }
     finally { setGuardandoSD(false) }
   }
@@ -232,7 +235,7 @@ export default function PagosPage() {
             <Button size="sm" variant="outline" className="gap-2" onClick={() => { setErrorRetiro(''); setFormRetiro({ idusuario_barbero: '', monto: '', descripcion: '' }); setModalRetiro(true) }}>
               <ArrowDownCircle className="size-4" /><span className="hidden sm:inline">Retiro</span>
             </Button>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0, hora_inicio: ahoraStr() }); setModalSD(true) }}>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0, hora_inicio: ahoraStr() }); setServiciosSD([]); setPickerSD(''); setModalSD(true) }}>
               <Scissors className="size-4" /><span className="hidden sm:inline">Servicio Directo</span>
             </Button>
             <Button size="sm" className="gap-2" onClick={() => { setErrorVenta(''); setFormVenta({ idproducto: '', cantidad: '1', metodo_pago: 'efectivo' }); setModalVenta(true) }}>
@@ -475,20 +478,43 @@ export default function PagosPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Servicio</Label>
-              <Select value={formSD.idservicio} onValueChange={v => {
+              <Label>Servicios</Label>
+              <Select value={pickerSD} onValueChange={v => {
                 const s = serviciosList.find(x => x.idservicio === Number(v))
-                setFormSD(p => ({ ...p, idservicio: v, monto: s ? String(s.precio) : p.monto }))
+                if (s && !serviciosSD.find(x => x.idservicio === s.idservicio)) {
+                  const next = [...serviciosSD, s]
+                  setServiciosSD(next)
+                  setFormSD(p => ({ ...p, monto: String(next.reduce((a, x) => a + x.precio, 0)) }))
+                }
+                setPickerSD('')
               }}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Agregar servicio…" /></SelectTrigger>
                 <SelectContent>
-                  {serviciosList.map(s => (
+                  {serviciosList.filter(s => !serviciosSD.find(x => x.idservicio === s.idservicio)).map(s => (
                     <SelectItem key={s.idservicio} value={String(s.idservicio)}>
                       {s.nombre_servicio} — {fmt(s.precio)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {serviciosSD.length > 0 && (
+                <div className="space-y-1 mt-1">
+                  {serviciosSD.map(s => (
+                    <div key={s.idservicio} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-sm">
+                      <span>{s.nombre_servicio} <span className="text-muted-foreground">({s.duracion_minutos}min)</span></span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{fmt(s.precio)}</span>
+                        <button type="button" className="text-muted-foreground hover:text-destructive text-base leading-none"
+                          onClick={() => {
+                            const next = serviciosSD.filter(x => x.idservicio !== s.idservicio)
+                            setServiciosSD(next)
+                            setFormSD(p => ({ ...p, monto: String(next.reduce((a, x) => a + x.precio, 0)) }))
+                          }}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Nombre del cliente <span className="text-xs text-muted-foreground">(opcional)</span></Label>
@@ -527,7 +553,7 @@ export default function PagosPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setModalSD(false)}>Cancelar</Button>
             <Button onClick={registrarServicioDirecto}
-              disabled={guardandoSD || !formSD.idusuario_barbero || !formSD.idservicio || !formSD.hora_inicio || !formSD.monto}>
+              disabled={guardandoSD || !formSD.idusuario_barbero || serviciosSD.length === 0 || !formSD.hora_inicio || !formSD.monto}>
               {guardandoSD ? 'Registrando...' : 'Registrar y cobrar'}
             </Button>
           </DialogFooter>

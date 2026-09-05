@@ -51,7 +51,7 @@ const HORAS = Array.from({ length: 24 }, (_, h) =>
 
 const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-const FORM0 = { nombre_cliente: '', telefono_cliente: '', idservicio: '', hora_inicio: '', fecha: '' }
+const FORM0 = { nombre_cliente: '', telefono_cliente: '', hora_inicio: '', fecha: '' }
 
 const hoyStr = () => new Date().toISOString().split('T')[0]
 const fmt    = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${n}`
@@ -74,6 +74,8 @@ export default function BarberoPage() {
   const [productosVenta, setProductosVenta] = useState<ProductoVenta[]>([])
 
   const [modalNuevo,    setModalNuevo]    = useState(false)
+  const [serviciosNuevo, setServiciosNuevo] = useState<Servicio[]>([])
+  const [pickerNuevo, setPickerNuevo]   = useState('')
   const [modalCancelar, setModalCancelar] = useState(false)
   const [modalCobro,    setModalCobro]    = useState(false)
   const [modalVenta,    setModalVenta]    = useState(false)
@@ -99,8 +101,10 @@ export default function BarberoPage() {
   const [errorVenta,     setErrorVenta]     = useState('')
 
   const [modalSD, setModalSD]         = useState(false)
-  const FORM_SD0_B = { idservicio: '', nombre_cliente: '', hora_inicio: '', metodo_pago: 'efectivo', monto: '' }
+  const FORM_SD0_B = { nombre_cliente: '', hora_inicio: '', metodo_pago: 'efectivo', monto: '' }
   const [formSD,   setFormSD]         = useState(FORM_SD0_B)
+  const [serviciosSD, setServiciosSD] = useState<Servicio[]>([])
+  const [pickerSD, setPickerSD]       = useState('')
   const [guardandoSD, setGuardandoSD] = useState(false)
   const [errorSD,  setErrorSD]        = useState('')
 
@@ -142,16 +146,22 @@ export default function BarberoPage() {
 
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault(); setError('')
-    const servicio = servicios.find(s => s.idservicio === Number(form.idservicio))
-    if (!servicio) return setError('Seleccioná un servicio.')
+    if (serviciosNuevo.length === 0) return setError('Seleccioná al menos un servicio.')
     if (!form.nombre_cliente || !form.hora_inicio || !form.fecha) return setError('Completá los campos obligatorios.')
+    const duracionTotal = serviciosNuevo.reduce((s, x) => s + x.duracion_minutos, 0)
     const [h, m] = form.hora_inicio.split(':').map(Number)
-    const finMin = h * 60 + m + servicio.duracion_minutos
+    const finMin = h * 60 + m + duracionTotal
     const hora_fin = `${String(Math.floor(finMin/60)).padStart(2,'0')}:${String(finMin%60).padStart(2,'0')}`
     setGuardando(true)
     try {
-      await api.post('/turnos', { ...form, idservicio: Number(form.idservicio), hora_fin, tipo_alta: 'orden_de_llegada' })
-      setModalNuevo(false); setForm({ ...FORM0, fecha: hoyStr() }); recargar()
+      await api.post('/turnos', {
+        ...form,
+        idservicio: serviciosNuevo[0].idservicio,
+        servicios_ids: serviciosNuevo.map(s => s.idservicio),
+        hora_fin,
+        tipo_alta: 'orden_de_llegada',
+      })
+      setModalNuevo(false); setForm({ ...FORM0, fecha: hoyStr() }); setServiciosNuevo([]); setPickerNuevo(''); recargar()
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Error al guardar.') }
     finally { setGuardando(false) }
   }
@@ -162,14 +172,15 @@ export default function BarberoPage() {
   const registrarServicioDirectoBarbero = async () => {
     setGuardandoSD(true); setErrorSD('')
     try {
-      const servicio = servicios.find(s => s.idservicio === Number(formSD.idservicio))
-      if (!servicio) throw new Error('Seleccioná un servicio.')
+      if (serviciosSD.length === 0) throw new Error('Seleccioná al menos un servicio.')
       if (!formSD.hora_inicio) throw new Error('Ingresá la hora.')
+      const duracionTotal = serviciosSD.reduce((s, x) => s + x.duracion_minutos, 0)
       const [h, m] = formSD.hora_inicio.split(':').map(Number)
-      const finMin = h * 60 + m + servicio.duracion_minutos
+      const finMin = h * 60 + m + duracionTotal
       const hora_fin = `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`
       const turno = await api.post<{ idagenda: number }>('/turnos', {
-        idservicio: Number(formSD.idservicio),
+        idservicio: serviciosSD[0].idservicio,
+        servicios_ids: serviciosSD.map(s => s.idservicio),
         nombre_cliente: formSD.nombre_cliente || 'Cliente',
         fecha: hoyBarbero(),
         hora_inicio: formSD.hora_inicio,
@@ -177,7 +188,7 @@ export default function BarberoPage() {
         tipo_alta: 'orden_de_llegada',
       })
       await api.post('/pagos', { idagenda: turno.idagenda, monto_pago: Number(formSD.monto), metodo_pago: formSD.metodo_pago })
-      setModalSD(false); setFormSD(FORM_SD0_B); recargar(); cargarPendientesCobro()
+      setModalSD(false); setFormSD(FORM_SD0_B); setServiciosSD([]); setPickerSD(''); recargar(); cargarPendientesCobro()
     } catch (e: unknown) { setErrorSD(e instanceof Error ? e.message : 'Error al registrar') }
     finally { setGuardandoSD(false) }
   }
@@ -407,7 +418,7 @@ export default function BarberoPage() {
             )}
             {ordenLlegada && (
               <Button size="sm" variant="outline" className="gap-1.5 hidden md:flex"
-                onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setModalNuevo(true) }}>
+                onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setServiciosNuevo([]); setPickerNuevo(''); setModalNuevo(true) }}>
                 <Plus className="size-3.5" />Nuevo turno
               </Button>
             )}
@@ -426,7 +437,7 @@ export default function BarberoPage() {
                 {/* Botón móvil orden de llegada */}
                 {ordenLlegada && (
                   <button
-                    onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setModalNuevo(true) }}
+                    onClick={() => { setForm({ ...FORM0, fecha: hoyStr() }); setError(''); setTurnosDia([]); setServiciosNuevo([]); setPickerNuevo(''); setModalNuevo(true) }}
                     className="md:hidden flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 py-2.5 text-sm text-muted-foreground mb-4 hover:border-primary/40 hover:text-foreground transition-colors"
                   >
                     <Plus className="size-4" />Registrar por orden de llegada
@@ -470,7 +481,7 @@ export default function BarberoPage() {
           {tab === 'caja' && (
             <div className="p-4 md:p-6 space-y-2">
               <button
-                onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0_B, hora_inicio: ahoraStr() }); setModalSD(true) }}
+                onClick={() => { setErrorSD(''); setFormSD({ ...FORM_SD0_B, hora_inicio: ahoraStr() }); setServiciosSD([]); setPickerSD(''); setModalSD(true) }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 py-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors mb-2"
               >
                 <Scissors className="size-4" />Cobro rápido (sin turno)
@@ -557,20 +568,43 @@ export default function BarberoPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Servicio</Label>
-              <Select value={formSD.idservicio} onValueChange={v => {
+              <Label>Servicios</Label>
+              <Select value={pickerSD} onValueChange={v => {
                 const s = servicios.find(x => x.idservicio === Number(v))
-                setFormSD(p => ({ ...p, idservicio: v, monto: s ? String(s.precio) : p.monto }))
+                if (s && !serviciosSD.find(x => x.idservicio === s.idservicio)) {
+                  const next = [...serviciosSD, s]
+                  setServiciosSD(next)
+                  setFormSD(p => ({ ...p, monto: String(next.reduce((a, x) => a + x.precio, 0)) }))
+                }
+                setPickerSD('')
               }}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Agregar servicio…" /></SelectTrigger>
                 <SelectContent>
-                  {servicios.map(s => (
+                  {servicios.filter(s => !serviciosSD.find(x => x.idservicio === s.idservicio)).map(s => (
                     <SelectItem key={s.idservicio} value={String(s.idservicio)}>
                       {s.nombre_servicio} — ${Number(s.precio).toLocaleString('es-AR')}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {serviciosSD.length > 0 && (
+                <div className="space-y-1 mt-1">
+                  {serviciosSD.map(s => (
+                    <div key={s.idservicio} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-sm">
+                      <span>{s.nombre_servicio} <span className="text-muted-foreground">({s.duracion_minutos}min)</span></span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">${Number(s.precio).toLocaleString('es-AR')}</span>
+                        <button type="button" className="text-muted-foreground hover:text-destructive text-base leading-none"
+                          onClick={() => {
+                            const next = serviciosSD.filter(x => x.idservicio !== s.idservicio)
+                            setServiciosSD(next)
+                            setFormSD(p => ({ ...p, monto: String(next.reduce((a, x) => a + x.precio, 0)) }))
+                          }}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Nombre del cliente <span className="text-xs text-muted-foreground">(opcional)</span></Label>
@@ -603,7 +637,7 @@ export default function BarberoPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setModalSD(false)}>Cancelar</Button>
             <Button onClick={registrarServicioDirectoBarbero}
-              disabled={guardandoSD || !formSD.idservicio || !formSD.hora_inicio || !formSD.monto}>
+              disabled={guardandoSD || serviciosSD.length === 0 || !formSD.hora_inicio || !formSD.monto}>
               {guardandoSD ? 'Registrando...' : 'Cobrar'}
             </Button>
           </DialogFooter>
@@ -720,17 +754,41 @@ export default function BarberoPage() {
               <Input placeholder="+54 11 1234-5678" value={form.telefono_cliente}
                 onChange={e => setForm(p => ({...p, telefono_cliente: e.target.value}))} />
             </div>
-            <div className="grid gap-2"><Label>Servicio *</Label>
-              <Select value={form.idservicio} onValueChange={v => setForm(p => ({...p, idservicio: v}))}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+            <div className="grid gap-2"><Label>Servicios *</Label>
+              <Select value={pickerNuevo} onValueChange={v => {
+                const s = servicios.find(x => x.idservicio === Number(v))
+                if (s && !serviciosNuevo.find(x => x.idservicio === s.idservicio)) setServiciosNuevo(p => [...p, s])
+                setPickerNuevo('')
+              }}>
+                <SelectTrigger><SelectValue placeholder="Agregar servicio…" /></SelectTrigger>
                 <SelectContent>
-                  {servicios.map(s => (
+                  {servicios.filter(s => !serviciosNuevo.find(x => x.idservicio === s.idservicio)).map(s => (
                     <SelectItem key={s.idservicio} value={String(s.idservicio)}>
-                      {s.nombre_servicio} ({s.duracion_minutos} min)
+                      {s.nombre_servicio} ({s.duracion_minutos} min) — ${Number(s.precio).toLocaleString('es-AR')}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {serviciosNuevo.length > 0 && (
+                <div className="space-y-1">
+                  {serviciosNuevo.map(s => (
+                    <div key={s.idservicio} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-sm">
+                      <span>{s.nombre_servicio} <span className="text-muted-foreground">({s.duracion_minutos}min)</span></span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">${Number(s.precio).toLocaleString('es-AR')}</span>
+                        <button type="button" className="text-muted-foreground hover:text-destructive text-base leading-none"
+                          onClick={() => setServiciosNuevo(p => p.filter(x => x.idservicio !== s.idservicio))}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                  {serviciosNuevo.length > 1 && (
+                    <div className="flex justify-between px-3 py-1 text-sm font-semibold border-t">
+                      <span>Total</span>
+                      <span>${serviciosNuevo.reduce((a,s)=>a+s.precio,0).toLocaleString('es-AR')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2"><Label>Fecha *</Label>
