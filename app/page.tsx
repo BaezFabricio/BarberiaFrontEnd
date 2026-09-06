@@ -499,16 +499,80 @@ export default function Landing() {
                     <span className="text-base font-bold tracking-tight">Nuestro trabajo</span>
                   </div>
 
-                  {/* Mobile: tira horizontal */}
-                  <div className="flex md:hidden gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                    {galeriaImages.map(img => (
-                      <div key={img.idimagen} onClick={() => setGaleriaSelected(img)}
-                        className="shrink-0 cursor-pointer overflow-hidden rounded-lg border border-white/10 hover:border-primary/50 transition-colors"
-                        style={{ width: '80px', height: '108px' }}>
-                        <img src={img.url} alt="" className="h-full w-full object-cover" />
+                  {/* Mobile: abanico → tira horizontal (animado) */}
+                  {(() => {
+                    const CARD_W = 78, CARD_H = 110
+                    const CARD_GAP = 6
+                    const FAN_COUNT = Math.min(7, galeriaImages.length)
+                    const MAX_ANGLE = 32
+                    const closedH = 200
+                    const openH = CARD_H + 28
+                    const totalW = galeriaImages.length * (CARD_W + CARD_GAP)
+                    return (
+                      <div className="flex md:hidden flex-col gap-2">
+                        <div style={{
+                          position: 'relative',
+                          width: '100%',
+                          height: `${galeriaExpandida ? openH : closedH}px`,
+                          overflowX: galeriaExpandida ? 'auto' : 'visible',
+                          overflowY: 'visible',
+                          transition: 'height 0.4s cubic-bezier(.4,0,.2,1)',
+                          scrollbarWidth: 'none',
+                        }}>
+                          <div style={{
+                            position: 'relative',
+                            width: galeriaExpandida ? `${totalW}px` : '100%',
+                            height: '100%',
+                            minWidth: '100%',
+                          }}>
+                            {galeriaImages.map((img, i) => {
+                              const inFan = i < FAN_COUNT
+                              const fanAngle = FAN_COUNT === 1 ? 0 : -MAX_ANGLE + (Math.min(i, FAN_COUNT - 1) / (FAN_COUNT - 1)) * 2 * MAX_ANGLE
+                              const angle = galeriaExpandida ? 0 : (inFan ? fanAngle : 0)
+                              const leftVal = galeriaExpandida
+                                ? `${i * (CARD_W + CARD_GAP)}px`
+                                : `calc(50% - ${CARD_W / 2}px)`
+                              const topVal = galeriaExpandida ? '4px' : '16px'
+                              return (
+                                <div key={img.idimagen}
+                                  onClick={() => galeriaExpandida ? setGaleriaSelected(img) : setGaleriaExpandida(true)}
+                                  className="absolute overflow-hidden rounded-xl border-2 shadow-xl cursor-pointer hover:brightness-110"
+                                  style={{
+                                    width: `${CARD_W}px`, height: `${CARD_H}px`,
+                                    left: leftVal,
+                                    top: topVal,
+                                    transformOrigin: '50% 100%',
+                                    transform: `rotate(${angle}deg)`,
+                                    zIndex: galeriaExpandida ? galeriaImages.length - i : (inFan ? i : 0),
+                                    borderColor: 'rgba(255,255,255,0.18)',
+                                    transition: `top 0.38s cubic-bezier(.4,0,.2,1) ${i * 25}ms, left 0.38s cubic-bezier(.4,0,.2,1) ${i * 25}ms, transform 0.38s cubic-bezier(.4,0,.2,1) ${i * 25}ms`,
+                                  }}>
+                                  <img src={img.url} alt="" className="h-full w-full object-cover" />
+                                </div>
+                              )
+                            })}
+                          </div>
+                          {!galeriaExpandida && (
+                            <div className="absolute left-0 right-0 flex justify-center cursor-pointer"
+                              style={{ bottom: '10px', zIndex: 99 }}
+                              onClick={() => setGaleriaExpandida(true)}>
+                              <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-[11px] text-primary font-medium hover:bg-primary/20 transition-colors">
+                                Ver fotos
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {galeriaExpandida && (
+                          <div className="flex justify-center">
+                            <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-[11px] text-primary font-medium cursor-pointer hover:bg-primary/20 transition-colors"
+                              onClick={() => setGaleriaExpandida(false)}>
+                              <ChevronDown className="inline size-3 rotate-180 mr-1" />Cerrar
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })()}
 
                   {/* Desktop: abanico → grilla */}
                   {(() => {
