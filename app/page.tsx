@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Calendar, Clock, MapPin, Phone, MessageCircle,
   Check, ChevronRight, Scissors, Star, Loader2, AlertCircle,
-  ChevronDown, Images, Plus, Search
+  ChevronDown, Images, Plus, Search, Home, Users
 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -330,7 +330,7 @@ export default function Landing() {
   const heroBg = carouselImages[carouselIdx]?.url
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 md:pb-0">
 
       {/* ── HEADER ── */}
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/60 backdrop-blur-md">
@@ -713,6 +713,38 @@ export default function Landing() {
           to   { opacity: 1; transform: scale(1); }
         }
       `}</style>
+
+      {/* ── BOTTOM NAV MOBILE ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black/80 backdrop-blur-md">
+        <div className="flex items-center justify-around px-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', paddingTop: '8px' }}>
+          <a href="#nosotros" className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white transition-colors px-4 py-1">
+            <Home className="size-5" />
+            <span className="text-[10px] font-medium">Nosotros</span>
+          </a>
+          <a href="#servicios" className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white transition-colors px-4 py-1">
+            <Scissors className="size-5" />
+            <span className="text-[10px] font-medium">Servicios</span>
+          </a>
+
+          {/* Centro resaltado */}
+          <button onClick={() => abrirReserva()}
+            className="flex flex-col items-center gap-1 -mt-6 px-4">
+            <div className="size-14 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40 border-4 border-black/60">
+              <Calendar className="size-6 text-primary-foreground" />
+            </div>
+            <span className="text-[10px] font-bold text-primary">Reservar</span>
+          </button>
+
+          <a href="#equipo" className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white transition-colors px-4 py-1">
+            <Users className="size-5" />
+            <span className="text-[10px] font-medium">Equipo</span>
+          </a>
+          <a href="#reseñas" className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white transition-colors px-4 py-1">
+            <Star className="size-5" />
+            <span className="text-[10px] font-medium">Reseñas</span>
+          </a>
+        </div>
+      </nav>
 
       {/* ── LIGHTBOX GALERÍA ── */}
       <Dialog open={!!galeriaSelected} onOpenChange={open => !open && setGaleriaSelected(null)}>
@@ -1123,7 +1155,7 @@ export default function Landing() {
 
       {/* ── RESEÑAS BARBERÍA ── */}
       {barberia && (
-        <section className="py-12 bg-muted/20 border-t border-border">
+        <section id="reseñas" className="py-12 bg-muted/20 border-t border-border scroll-mt-16">
           <div className="container mx-auto px-4 max-w-5xl">
             <div className="flex items-end justify-between mb-6 flex-wrap gap-3">
               <div>
