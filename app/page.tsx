@@ -1217,23 +1217,41 @@ export default function Landing() {
 
           {/* ── Cart mobile (barra inferior) ── */}
           {selectedServicio && (
-            <div className="sm:hidden border-t border-border bg-card/60 backdrop-blur-sm px-4 py-3 flex items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="size-8 shrink-0 overflow-hidden rounded-lg bg-muted">
+            <div className="sm:hidden border-t border-border bg-card/80 backdrop-blur-sm px-4 py-2.5 shrink-0 flex items-center gap-3">
+              {/* Servicio */}
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="size-7 shrink-0 overflow-hidden rounded-md bg-muted">
                   {servicioSeleccionado?.imagen_url
                     ? <img src={servicioSeleccionado.imagen_url} alt="" className="h-full w-full object-cover" />
                     : <div className="flex h-full items-center justify-center"><Scissors className="size-3 text-muted-foreground/40" /></div>
                   }
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold leading-tight truncate">{servicioSeleccionado?.nombre_servicio}</p>
-                  {serviciosAdicionales.length > 0 && (
-                    <p className="text-[10px] text-muted-foreground">+{serviciosAdicionales.length} extra{serviciosAdicionales.length > 1 ? 's' : ''}</p>
-                  )}
+                  <p className="text-xs font-semibold truncate leading-tight">{servicioSeleccionado?.nombre_servicio}{serviciosAdicionales.length > 0 && <span className="text-muted-foreground font-normal"> +{serviciosAdicionales.length}</span>}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    {barberoSeleccionado && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <div className="size-3.5 overflow-hidden rounded-full bg-primary/20 inline-flex items-center justify-center shrink-0">
+                          {barberoSeleccionado.foto_url
+                            ? <img src={barberoSeleccionado.foto_url} alt="" className="h-full w-full object-cover" />
+                            : <span className="text-[7px] font-bold text-primary">{barberoSeleccionado.nombre_completo[0]}</span>
+                          }
+                        </div>
+                        {barberoSeleccionado.nombre_completo.split(' ')[0]}
+                      </span>
+                    )}
+                    {selectedFecha && selectedHora && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                        <Calendar className="size-2.5 shrink-0" />
+                        {new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} · {selectedHora}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+              {/* Total */}
               <div className="text-right shrink-0">
-                <p className="text-base font-black text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</p>
+                <p className="text-sm font-black text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</p>
                 <p className="text-[10px] text-muted-foreground">{totalDuracion} min</p>
               </div>
             </div>
