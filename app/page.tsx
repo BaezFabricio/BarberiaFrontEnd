@@ -411,6 +411,21 @@ export default function Landing() {
             )}
           </div>
 
+          {/* Pills de horarios */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {[
+              { label: 'Lun – Vie', valor: `${barberia.horario_lv_desde ?? '09:00'} – ${barberia.horario_lv_hasta ?? '19:00'} hs` },
+              { label: 'Sáb', valor: `${barberia.horario_sab_desde ?? '09:00'} – ${barberia.horario_sab_hasta ?? '15:00'} hs` },
+              { label: 'Dom', valor: barberia.domingo_cerrado ? 'Cerrado' : 'Abierto' },
+            ].map(({ label, valor }) => (
+              <div key={label} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur-sm">
+                <Clock className="size-3 text-primary opacity-80" />
+                <span className="text-white/60">{label}</span>
+                <span className="font-semibold text-white">{valor}</span>
+              </div>
+            ))}
+          </div>
+
           {/* Indicadores carousel */}
           {carouselImages.length > 1 && (
             <div className="flex gap-1.5">
@@ -425,32 +440,6 @@ export default function Landing() {
         {/* Scroll hint */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce text-white/50">
           <ChevronDown className="size-6" />
-        </div>
-      </section>
-
-
-      {/* ── HORARIOS ── */}
-      <section className="bg-primary py-3 text-primary-foreground">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 text-sm font-medium">
-            <div className="flex items-center gap-2.5">
-              <Clock className="size-4 opacity-70" />
-              <span className="opacity-70">Lun – Vie</span>
-              <span className="font-bold">{barberia.horario_lv_desde ?? '09:00'} – {barberia.horario_lv_hasta ?? '19:00'} hs</span>
-            </div>
-            <div className="hidden md:block h-5 w-px bg-primary-foreground/20" />
-            <div className="flex items-center gap-2.5">
-              <Clock className="size-4 opacity-70" />
-              <span className="opacity-70">Sábado</span>
-              <span className="font-bold">{barberia.horario_sab_desde ?? '09:00'} – {barberia.horario_sab_hasta ?? '15:00'} hs</span>
-            </div>
-            <div className="hidden md:block h-5 w-px bg-primary-foreground/20" />
-            <div className="flex items-center gap-2.5">
-              <Clock className="size-4 opacity-70" />
-              <span className="opacity-70">Domingo</span>
-              <span className="font-bold">{barberia.domingo_cerrado ? 'Cerrado' : 'Abierto'}</span>
-            </div>
-          </div>
         </div>
       </section>
 
