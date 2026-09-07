@@ -103,6 +103,7 @@ export default function Landing() {
   const [enviandoReseñaBarberia, setEnviandoReseñaBarberia] = useState(false)
   const [reseñaBarberiaEnviada, setReseñaBarberiaEnviada] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
+  const touchStartX = useRef<number | null>(null)
   const [subdominio, setSubdominio] = useState<string | null>(null)
   const [barberia, setBarberia] = useState<BarberiaPub | null>(null)
   const [loadingBarberia, setLoadingBarberia] = useState(true)
@@ -363,7 +364,17 @@ export default function Landing() {
       </header>
 
       {/* ── HERO ── */}
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-[#0a0a0a]">
+      <section
+        className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-[#0a0a0a]"
+        onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+        onTouchEnd={e => {
+          if (touchStartX.current === null || carouselImages.length <= 1) return
+          const delta = e.changedTouches[0].clientX - touchStartX.current
+          if (Math.abs(delta) < 40) return
+          setCarouselIdx(i => delta < 0 ? (i + 1) % carouselImages.length : (i - 1 + carouselImages.length) % carouselImages.length)
+          touchStartX.current = null
+        }}
+      >
         {/* Background image carousel */}
         {carouselImages.map((img, idx) => (
           <div key={img.url} className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: idx === carouselIdx ? 1 : 0 }}>
