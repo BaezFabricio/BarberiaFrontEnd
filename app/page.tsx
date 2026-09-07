@@ -387,18 +387,13 @@ export default function Landing() {
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center gap-6 px-4 text-center">
           <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-3">
-              {barberia.logo_url && (
-                <img src={barberia.logo_url} alt={nombreBarberia} className="h-10 w-auto max-w-[40px] object-contain drop-shadow-xl rounded-md" />
-              )}
-              <h1 className="text-5xl font-black leading-none tracking-tight text-white sm:text-7xl" style={{ fontFamily: headerFont }}>
-                {nombreBarberia.split(' ').map((p, i) => (
-                  <span key={i} style={{ color: i === 0 ? (barberia.color_header_1 ?? 'white') : (barberia.color_header_2 ?? barberia.color_header_1 ?? 'white') }}>
-                    {i > 0 ? ' ' : ''}{p}
-                  </span>
-                ))}
-              </h1>
-            </div>
+            <h1 className="text-5xl font-black leading-none tracking-tight text-white sm:text-7xl" style={{ fontFamily: headerFont }}>
+              {nombreBarberia.split(' ').map((p, i) => (
+                <span key={i} style={{ color: i === 0 ? (barberia.color_header_1 ?? 'white') : (barberia.color_header_2 ?? barberia.color_header_1 ?? 'white') }}>
+                  {i > 0 ? ' ' : ''}{p}
+                </span>
+              ))}
+            </h1>
             {barberia.slogan && (
               <p className="text-lg text-white/70 italic">{barberia.slogan}</p>
             )}
