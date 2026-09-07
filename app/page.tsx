@@ -1132,30 +1132,6 @@ export default function Landing() {
 
           </div>
 
-          {/* ── Cart mobile (barra inferior) ── */}
-          {selectedServicio && (
-            <div className="sm:hidden border-t border-border bg-card/60 backdrop-blur-sm px-4 py-3 flex items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="size-8 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {servicioSeleccionado?.imagen_url
-                    ? <img src={servicioSeleccionado.imagen_url} alt="" className="h-full w-full object-cover" />
-                    : <div className="flex h-full items-center justify-center"><Scissors className="size-3 text-muted-foreground/40" /></div>
-                  }
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold leading-tight truncate">{servicioSeleccionado?.nombre_servicio}</p>
-                  {serviciosAdicionales.length > 0 && (
-                    <p className="text-[10px] text-muted-foreground">+{serviciosAdicionales.length} extra{serviciosAdicionales.length > 1 ? 's' : ''}</p>
-                  )}
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-base font-black text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</p>
-                <p className="text-[10px] text-muted-foreground">{totalDuracion} min</p>
-              </div>
-            </div>
-          )}
-
           {/* ── Cart sidebar ── */}
           {selectedServicio && (
             <div className="hidden sm:flex flex-col shrink-0 w-52 border-l border-border bg-card/40 overflow-y-auto">
@@ -1238,6 +1214,31 @@ export default function Landing() {
           )}
 
           </div>{/* fin flex contenido+sidebar */}
+
+          {/* ── Cart mobile (barra inferior) ── */}
+          {selectedServicio && (
+            <div className="sm:hidden border-t border-border bg-card/60 backdrop-blur-sm px-4 py-3 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-8 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  {servicioSeleccionado?.imagen_url
+                    ? <img src={servicioSeleccionado.imagen_url} alt="" className="h-full w-full object-cover" />
+                    : <div className="flex h-full items-center justify-center"><Scissors className="size-3 text-muted-foreground/40" /></div>
+                  }
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold leading-tight truncate">{servicioSeleccionado?.nombre_servicio}</p>
+                  {serviciosAdicionales.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">+{serviciosAdicionales.length} extra{serviciosAdicionales.length > 1 ? 's' : ''}</p>
+                  )}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-base font-black text-primary">${Number(totalPrecio).toLocaleString('es-AR')}</p>
+                <p className="text-[10px] text-muted-foreground">{totalDuracion} min</p>
+              </div>
+            </div>
+          )}
+
         </DialogContent>
       </Dialog>
 
