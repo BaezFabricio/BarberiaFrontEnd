@@ -11,12 +11,47 @@ const oswald = Oswald({ subsets: ["latin"], weight: "600", variable: '--font-osw
 const bebasNeue = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: '--font-bebas' });
 const abrilFatface = Abril_Fatface({ subsets: ["latin"], weight: "400", variable: '--font-abril' });
 
-export const metadata: Metadata = {
-  title: 'AR Estudios Barbershop',
-  description: 'Sistema profesional de gestion para barberias. Agenda turnos, gestiona clientes, barberos y reportes.',
-  icons: {
-    icon: '/icon.svg',
-  },
+async function fetchBarberiaInfo() {
+  try {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001'
+    const isSingleTenant = process.env.NEXT_PUBLIC_SINGLE_TENANT === 'true'
+    const url = isSingleTenant
+      ? `${backendUrl}/api/public/barberia`
+      : null
+    if (!url) return null
+    const res = await fetch(url, { next: { revalidate: 3600 } })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const barberia = await fetchBarberiaInfo()
+  const nombre = barberia?.nombre_negocio ?? 'Barbería'
+  const descripcion = barberia?.descripcion ?? 'Reservá tu turno online fácil y rápido.'
+  const logo = barberia?.logo_url ?? null
+  const carouselImg = barberia?.imagenes_carousel?.[0]?.url ?? null
+  const ogImage = logo ?? carouselImg ?? undefined
+
+  return {
+    title: nombre,
+    description: descripcion,
+    icons: { icon: logo ?? '/icon.svg' },
+    openGraph: {
+      title: nombre,
+      description: descripcion,
+      type: 'website',
+      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630, alt: nombre }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: nombre,
+      description: descripcion,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  }
 }
 
 export const viewport: Viewport = {
