@@ -411,21 +411,6 @@ export default function Landing() {
             )}
           </div>
 
-          {/* Pills de horarios */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {[
-              { label: 'Lun – Vie', valor: `${barberia.horario_lv_desde ?? '09:00'} – ${barberia.horario_lv_hasta ?? '19:00'} hs` },
-              { label: 'Sáb', valor: `${barberia.horario_sab_desde ?? '09:00'} – ${barberia.horario_sab_hasta ?? '15:00'} hs` },
-              { label: 'Dom', valor: barberia.domingo_cerrado ? 'Cerrado' : 'Abierto' },
-            ].map(({ label, valor }) => (
-              <div key={label} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur-sm">
-                <Clock className="size-3 text-primary opacity-80" />
-                <span className="text-white/60">{label}</span>
-                <span className="font-semibold text-white">{valor}</span>
-              </div>
-            ))}
-          </div>
-
           {/* Indicadores carousel */}
           {carouselImages.length > 1 && (
             <div className="flex gap-1.5">
@@ -435,6 +420,21 @@ export default function Landing() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Pills de horarios — fondo del hero */}
+        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-2 px-4 w-full">
+          {[
+            { label: 'Lun – Vie', valor: `${barberia.horario_lv_desde ?? '09:00'} – ${barberia.horario_lv_hasta ?? '19:00'} hs` },
+            { label: 'Sáb', valor: `${barberia.horario_sab_desde ?? '09:00'} – ${barberia.horario_sab_hasta ?? '15:00'} hs` },
+            { label: 'Dom', valor: barberia.domingo_cerrado ? 'Cerrado' : 'Abierto' },
+          ].map(({ label, valor }) => (
+            <div key={label} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur-sm">
+              <Clock className="size-3 text-primary opacity-80" />
+              <span className="text-white/60">{label}</span>
+              <span className="font-semibold text-white">{valor}</span>
+            </div>
+          ))}
         </div>
 
         {/* Scroll hint */}
