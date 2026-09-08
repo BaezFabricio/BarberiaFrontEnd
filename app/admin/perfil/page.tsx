@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Camera, Lock, CheckCircle, User, Mail, Phone, AlertCircle, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type Perfil = {
   idusuario: number
@@ -106,8 +107,31 @@ export default function PerfilAdmin() {
       <AdminHeader title="Mi Perfil" description="Administrá tu cuenta y seguridad" />
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         {!perfil ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <div className="mx-auto max-w-2xl space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                  <Skeleton className="size-24 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-3 w-full">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <Skeleton className="h-5 w-32" />
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-20" />
+                    <Skeleton className="h-10 w-full rounded-md" />
+                  </div>
+                ))}
+                <Skeleton className="h-10 w-32 rounded-md mt-2" />
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <div className="mx-auto max-w-2xl space-y-6">

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Star, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL
 
@@ -46,8 +47,19 @@ export default function CalificarPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="size-8 animate-spin text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="size-20 rounded-full" />
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="flex justify-center gap-2">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="size-10 rounded-full" />)}
+        </div>
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-11 w-full rounded-lg" />
+      </div>
     </div>
   )
 

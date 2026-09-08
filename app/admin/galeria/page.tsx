@@ -5,6 +5,7 @@ import { AdminHeader } from '@/components/admin/admin-layout'
 import { Button } from '@/components/ui/button'
 import { ImagePlus, Trash2, Loader2, Images } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from 'sonner'
 
 type GaleriaImg = { idimagen: number; url: string }
 
@@ -41,9 +42,14 @@ export default function GaleriaPage() {
   }
 
   const eliminar = async (id: number) => {
-    setEliminando(id)
-    try { await api.delete(`/galeria/${id}`); cargar() }
-    catch {} finally { setEliminando(null) }
+    const imagenAEliminar = imagenes.find(img => img.idimagen === id)
+    setImagenes(prev => prev.filter(img => img.idimagen !== id))
+    try {
+      await api.delete(`/galeria/${id}`)
+    } catch {
+      if (imagenAEliminar) setImagenes(prev => [...prev, imagenAEliminar])
+      toast.error('No se pudo eliminar la imagen')
+    }
   }
 
   return (

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Geist_Mono, Cinzel, Playfair_Display, Oswald, Bebas_Neue, Abril_Fatface } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
@@ -38,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: nombre,
     description: descripcion,
-    icons: { icon: logo ?? '/icon.svg' },
+    icons: { icon: logo ?? '/logo.png' },
     openGraph: {
       title: nombre,
       description: descripcion,
@@ -93,6 +94,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${geistMono.variable} ${cinzel.variable} ${playfair.variable} ${oswald.variable} ${bebasNeue.variable} ${abrilFatface.variable} font-sans antialiased`}>
         {children}
+        <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

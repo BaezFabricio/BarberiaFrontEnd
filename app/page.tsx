@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { aplicarColor, aplicarColorGuardado } from '@/lib/theme'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3000'
 
@@ -283,8 +284,44 @@ export default function Landing() {
 
   if (loadingBarberia) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        {/* Navbar skeleton */}
+        <div className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/60 backdrop-blur-md h-16 flex items-center px-6 gap-3">
+          <Skeleton className="h-9 w-9 rounded-full bg-white/10" />
+          <Skeleton className="h-4 w-36 bg-white/10" />
+          <div className="ml-auto flex items-center gap-3">
+            <Skeleton className="h-4 w-20 hidden md:block bg-white/10" />
+            <Skeleton className="h-4 w-20 hidden md:block bg-white/10" />
+            <Skeleton className="h-8 w-28 rounded-md bg-white/10" />
+          </div>
+        </div>
+        {/* Hero skeleton */}
+        <div className="relative h-screen bg-muted/30 pt-16">
+          <Skeleton className="absolute inset-0 rounded-none opacity-40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-4">
+            <Skeleton className="h-5 w-32 rounded-full" />
+            <Skeleton className="h-14 w-72 sm:w-96" />
+            <Skeleton className="h-4 w-56" />
+            <Skeleton className="h-12 w-40 rounded-full mt-2" />
+          </div>
+        </div>
+        {/* Nosotros skeleton */}
+        <div className="py-10 px-6 max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row gap-10">
+            <div className="flex-1 space-y-4">
+              <Skeleton className="h-6 w-28 rounded-full" />
+              <Skeleton className="h-8 w-56" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-4 w-3/5" />
+            </div>
+            <div className="w-full md:w-72 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -935,11 +972,6 @@ export default function Landing() {
                         </div>
                       </div>
                     )}
-                    <div className="flex justify-end pt-2">
-                      <Button onClick={() => setStep(2)} disabled={!selectedServicio} size="lg">
-                        Continuar <ChevronRight className="ml-1 size-4" />
-                      </Button>
-                    </div>
                   </>
                 )}
               </div>
@@ -997,12 +1029,6 @@ export default function Landing() {
                     </Card>
                   ))}
                 </div>
-                <div className="flex justify-between pt-2">
-                  <Button variant="outline" onClick={() => setStep(1)}>Atrás</Button>
-                  <Button onClick={() => setStep(3)} disabled={!selectedBarbero} size="lg">
-                    Continuar <ChevronRight className="ml-1 size-4" />
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1026,7 +1052,18 @@ export default function Landing() {
                   <div>
                     <Label className="mb-3 block font-semibold">Elegí un horario</Label>
                     {loadingSlots ? (
-                      <div className="flex items-center gap-2 py-6 text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Cargando horarios...</div>
+                      <div className="space-y-4 py-2">
+                        {['Mañana', 'Tarde'].map((label) => (
+                          <div key={label}>
+                            <Skeleton className="h-3 w-16 mb-2" />
+                            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                              {[...Array(6)].map((_, i) => (
+                                <Skeleton key={i} className="h-10 rounded-xl" />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ) : slots.length === 0 ? (
                       <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
                         {sinHorarios ? 'Este barbero no trabaja este día. Probá con otro día u otro barbero.' : 'No hay turnos disponibles. Probá con otra fecha.'}
@@ -1054,12 +1091,6 @@ export default function Landing() {
                     )}
                   </div>
                 )}
-                <div className="flex justify-between pt-2">
-                  <Button variant="outline" onClick={() => setStep(2)}>Atrás</Button>
-                  <Button onClick={() => setStep(4)} disabled={!selectedFecha || !selectedHora} size="lg">
-                    Continuar <ChevronRight className="ml-1 size-4" />
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1109,21 +1140,9 @@ export default function Landing() {
                       onChange={e => setClienteData(p => ({ ...p, email: e.target.value }))} className="mt-1.5" />
                   </div>
                 </div>
-                {errorReserva && (
-                  <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-                    <AlertCircle className="size-4 shrink-0" />{errorReserva}
-                  </div>
-                )}
                 <p className="text-xs text-muted-foreground text-center px-2">
                   Al confirmar aceptás que tus datos sean utilizados exclusivamente para gestionar tu turno.
                 </p>
-                <div className="flex justify-between pt-2 pb-2">
-                  <Button variant="outline" onClick={() => setStep(3)}>Atrás</Button>
-                  <Button size="lg" onClick={handleConfirmarReserva}
-                    disabled={!clienteData.nombre || !clienteData.telefono || enviando}>
-                    {enviando ? <><Loader2 className="mr-2 size-4 animate-spin" />Reservando...</> : 'Confirmar reserva'}
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1253,6 +1272,28 @@ export default function Landing() {
               </div>
             </div>
           )}
+
+          {/* Footer de navegación - siempre en la misma posición */}
+          <div className="shrink-0 border-t border-border px-6 py-4 bg-background space-y-3">
+            {step === 4 && errorReserva && (
+              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="size-4 shrink-0" />{errorReserva}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              {step > 1 ? (
+                <Button variant="outline" onClick={() => setStep(s => s - 1)}>Atrás</Button>
+              ) : <div />}
+              {step === 1 && <Button onClick={() => setStep(2)} disabled={!selectedServicio} size="lg">Continuar <ChevronRight className="ml-1 size-4" /></Button>}
+              {step === 2 && <Button onClick={() => setStep(3)} disabled={!selectedBarbero} size="lg">Continuar <ChevronRight className="ml-1 size-4" /></Button>}
+              {step === 3 && <Button onClick={() => setStep(4)} disabled={!selectedFecha || !selectedHora} size="lg">Continuar <ChevronRight className="ml-1 size-4" /></Button>}
+              {step === 4 && (
+                <Button size="lg" onClick={handleConfirmarReserva} disabled={!clienteData.nombre || !clienteData.telefono || enviando}>
+                  {enviando ? <><Loader2 className="mr-2 size-4 animate-spin" />Reservando...</> : 'Confirmar reserva'}
+                </Button>
+              )}
+            </div>
+          </div>
 
         </DialogContent>
       </Dialog>

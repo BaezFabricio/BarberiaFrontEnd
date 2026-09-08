@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Plus, Search, MoreHorizontal, Pencil, Package, AlertTriangle, DollarSign, ShoppingBag, Minus, PlusIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
+import { toast } from 'sonner'
 
 type Producto = {
   idproducto: number
@@ -63,34 +64,51 @@ export default function ProductosPage() {
     e.preventDefault()
     setError('')
     if (!form.nombre_producto || !form.categoria || !form.precio_venta) return setError('Nombre, categoría y precio son obligatorios.')
-    setLoading(true)
-    try {
-      const payload = { ...form, precio_venta: Number(form.precio_venta), stock_actual: Number(form.stock_actual), stock_minimo: Number(form.stock_minimo) }
-      if (editando) await api.put(`/productos/${editando.idproducto}`, payload)
-      else await api.post('/productos', payload)
+    const payload = { ...form, precio_venta: Number(form.precio_venta), stock_actual: Number(form.stock_actual), stock_minimo: Number(form.stock_minimo) }
+    if (editando) {
+      const productoOriginal = editando
       setModalAbierto(false)
-      cargar()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al guardar.')
-    } finally { setLoading(false) }
+      setProductos(prev => prev.map(p => p.idproducto === editando.idproducto ? { ...p, ...payload } : p))
+      try {
+        await api.put(`/productos/${editando.idproducto}`, payload)
+      } catch {
+        setProductos(prev => prev.map(p => p.idproducto === productoOriginal.idproducto ? productoOriginal : p))
+        toast.error('No se pudo guardar los cambios')
+      }
+    } else {
+      setLoading(true)
+      try {
+        await api.post('/productos', payload)
+        setModalAbierto(false)
+        cargar()
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Error al guardar.')
+      } finally { setLoading(false) }
+    }
   }
 
   const confirmarYEliminar = async () => {
     if (!confirmarEliminar) return
-    setEliminando(true); setErrorEliminar('')
+    const productoAEliminar = confirmarEliminar
+    setConfirmarEliminar(null)
+    setProductos(prev => prev.filter(p => p.idproducto !== productoAEliminar.idproducto))
     try {
-      await api.delete(`/productos/${confirmarEliminar.idproducto}`)
-      setConfirmarEliminar(null)
-      cargar()
-    } catch (err: unknown) {
-      setErrorEliminar(err instanceof Error ? err.message : 'Error al eliminar.')
-    } finally { setEliminando(false) }
+      await api.delete(`/productos/${productoAEliminar.idproducto}`)
+    } catch {
+      setProductos(prev => [...prev, productoAEliminar])
+      toast.error('No se pudo eliminar el producto')
+    }
   }
 
   const ajustarStock = async (p: Producto, delta: number) => {
     const nuevo = Math.max(0, p.stock_actual + delta)
-    await api.put(`/productos/${p.idproducto}`, { stock_actual: nuevo })
-    cargar()
+    setProductos(prev => prev.map(x => x.idproducto === p.idproducto ? { ...x, stock_actual: nuevo } : x))
+    try {
+      await api.put(`/productos/${p.idproducto}`, { stock_actual: nuevo })
+    } catch {
+      setProductos(prev => prev.map(x => x.idproducto === p.idproducto ? { ...x, stock_actual: p.stock_actual } : x))
+      toast.error('No se pudo actualizar el stock')
+    }
   }
 
   const categorias = [...new Set(productos.map(p => p.categoria))]

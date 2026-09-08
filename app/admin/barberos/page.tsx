@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Plus, Search, MoreHorizontal, Power, Users, Star, Clock, X, Pencil, Trash2, KeyRound, ShieldCheck, ShieldMinus } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from 'sonner'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Image from 'next/image'
 
@@ -125,18 +126,27 @@ export default function BarberosPage() {
 
   const toggleEstado = async (b: Barbero) => {
     const nuevoEstado = (b.estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo'
-    await api.patch(`/barberos/${b.idusuario}/estado`, { estado: nuevoEstado })
-    cargar()
+    setBarberos(prev => prev.map(x => x.idusuario === b.idusuario ? { ...x, estado: nuevoEstado } : x))
+    try {
+      await api.patch(`/barberos/${b.idusuario}/estado`, { estado: nuevoEstado })
+    } catch {
+      setBarberos(prev => prev.map(x => x.idusuario === b.idusuario ? { ...x, estado: b.estado } : x))
+      toast.error('No se pudo cambiar el estado')
+    }
   }
 
   const confirmarEliminar = async () => {
     if (!eliminarBarbero) return
-    setLoadingEliminar(true)
+    const barberoAEliminar = eliminarBarbero
+    setModalEliminar(false)
+    setEliminarBarbero(null)
+    setBarberos(prev => prev.filter(b => b.idusuario !== barberoAEliminar.idusuario))
     try {
-      await api.delete(`/barberos/${eliminarBarbero.idusuario}`)
-      setModalEliminar(false)
-      cargar()
-    } catch { } finally { setLoadingEliminar(false) }
+      await api.delete(`/barberos/${barberoAEliminar.idusuario}`)
+    } catch {
+      setBarberos(prev => [...prev, barberoAEliminar])
+      toast.error('No se pudo eliminar el barbero')
+    }
   }
 
   const cambiarPassword = async () => {
@@ -227,24 +237,32 @@ export default function BarberosPage() {
 
   const handleGuardarEditar = async () => {
     if (!editBarbero) return
-    setLoadingEditar(true); setErrorEditar('')
+    const barberoOriginal = editBarbero
+    const nuevaInfo = { ...formEditar, comision_porcentaje: Number(formEditar.comision_porcentaje) }
+    setModalEditar(false)
+    setBarberos(prev => prev.map(b => b.idusuario === barberoOriginal.idusuario
+      ? { ...b, comision_porcentaje: nuevaInfo.comision_porcentaje, puede_cobrar: nuevaInfo.puede_cobrar, puede_vender: nuevaInfo.puede_vender, especialidades: nuevaInfo.especialidades, persona: { ...b.persona, nombre_completo: nuevaInfo.nombre_completo, telefono: nuevaInfo.telefono, correo_electronico: nuevaInfo.correo_electronico } }
+      : b
+    ))
     try {
-      await api.put(`/barberos/${editBarbero.idusuario}`, { ...formEditar, comision_porcentaje: Number(formEditar.comision_porcentaje) })
-      setModalEditar(false)
-      cargar()
-    } catch (err: unknown) {
-      setErrorEditar(err instanceof Error ? err.message : 'Error al guardar.')
-    } finally { setLoadingEditar(false) }
+      await api.put(`/barberos/${barberoOriginal.idusuario}`, nuevaInfo)
+    } catch {
+      setBarberos(prev => prev.map(b => b.idusuario === barberoOriginal.idusuario ? barberoOriginal : b))
+      toast.error('No se pudo guardar los cambios')
+    }
   }
 
   const cambiarRol = async (nuevoRol: 'admin' | 'barbero') => {
     if (!rolBarb) return
-    setLoadingRol(true)
+    const barberoOriginal = rolBarb
+    setModalRol(false)
+    setBarberos(prev => prev.map(b => b.idusuario === barberoOriginal.idusuario ? { ...b, rol: nuevoRol } : b))
     try {
-      await api.patch(`/barberos/${rolBarb.idusuario}/rol`, { rol: nuevoRol })
-      setModalRol(false)
-      cargar()
-    } catch { } finally { setLoadingRol(false) }
+      await api.patch(`/barberos/${barberoOriginal.idusuario}/rol`, { rol: nuevoRol })
+    } catch {
+      setBarberos(prev => prev.map(b => b.idusuario === barberoOriginal.idusuario ? barberoOriginal : b))
+      toast.error('No se pudo cambiar el rol')
+    }
   }
 
   const iniciales = (n: string) => n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2)

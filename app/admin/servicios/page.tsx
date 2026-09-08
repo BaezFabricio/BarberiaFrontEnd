@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Search, MoreHorizontal, Pencil, Power, Clock, DollarSign, Package, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from 'sonner'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Image from 'next/image'
 
@@ -70,36 +71,54 @@ export default function ServiciosPage() {
     if (Number(form.duracion_minutos) < 30) {
       return setError('La duración mínima es 30 minutos.')
     }
-    setLoading(true)
-    try {
-      const payload = { ...form, precio: Number(form.precio), duracion_minutos: Number(form.duracion_minutos) }
-      if (editando) {
-        await api.put(`/servicios/${editando.idservicio}`, payload)
-      } else {
-        await api.post('/servicios', payload)
-      }
+    const payload = { ...form, precio: Number(form.precio), duracion_minutos: Number(form.duracion_minutos) }
+    if (editando) {
+      const servicioOriginal = editando
       setModalAbierto(false)
-      cargar()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al guardar.')
-    } finally {
-      setLoading(false)
+      setServicios(prev => prev.map(x => x.idservicio === editando.idservicio
+        ? { ...x, nombre_servicio: payload.nombre_servicio, descripcion: payload.descripcion || null, precio: payload.precio, duracion_minutos: payload.duracion_minutos }
+        : x
+      ))
+      try {
+        await api.put(`/servicios/${editando.idservicio}`, payload)
+      } catch {
+        setServicios(prev => prev.map(x => x.idservicio === servicioOriginal.idservicio ? servicioOriginal : x))
+        toast.error('No se pudo guardar los cambios')
+      }
+    } else {
+      setLoading(true)
+      try {
+        await api.post('/servicios', payload)
+        setModalAbierto(false)
+        cargar()
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Error al guardar.')
+      } finally { setLoading(false) }
     }
   }
 
   const toggleEstado = async (s: Servicio) => {
-    await api.put(`/servicios/${s.idservicio}`, { estado: s.estado === 'activo' ? 'inactivo' : 'activo' })
-    cargar()
+    const nuevoEstado = s.estado === 'activo' ? 'inactivo' as const : 'activo' as const
+    setServicios(prev => prev.map(x => x.idservicio === s.idservicio ? { ...x, estado: nuevoEstado } : x))
+    try {
+      await api.put(`/servicios/${s.idservicio}`, { estado: nuevoEstado })
+    } catch {
+      setServicios(prev => prev.map(x => x.idservicio === s.idservicio ? { ...x, estado: s.estado } : x))
+      toast.error('No se pudo cambiar el estado')
+    }
   }
 
   const confirmarYEliminar = async () => {
     if (!confirmarEliminar) return
-    setEliminando(true)
+    const servicioAEliminar = confirmarEliminar
+    setConfirmarEliminar(null)
+    setServicios(prev => prev.filter(x => x.idservicio !== servicioAEliminar.idservicio))
     try {
-      await api.delete(`/servicios/${confirmarEliminar.idservicio}`)
-      setConfirmarEliminar(null)
-      cargar()
-    } catch { } finally { setEliminando(false) }
+      await api.delete(`/servicios/${servicioAEliminar.idservicio}`)
+    } catch {
+      setServicios(prev => [...prev, servicioAEliminar])
+      toast.error('No se pudo eliminar el servicio')
+    }
   }
 
   const filtrados = servicios.filter(s =>
