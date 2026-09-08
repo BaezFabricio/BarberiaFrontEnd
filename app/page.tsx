@@ -273,8 +273,8 @@ export default function Landing() {
 
   const servicioSeleccionado = barberia?.servicios.find(s => s.idservicio === selectedServicio)
   const barberoSeleccionado = barberia?.barberos.find(b => b.idusuario === selectedBarbero)
-  const totalPrecio = (servicioSeleccionado?.precio ?? 0) +
-    serviciosAdicionales.reduce((acc, id) => acc + (barberia?.servicios.find(s => s.idservicio === id)?.precio ?? 0), 0)
+  const totalPrecio = (Number(servicioSeleccionado?.precio) || 0) +
+    serviciosAdicionales.reduce((acc, id) => acc + (Number(barberia?.servicios.find(s => s.idservicio === id)?.precio) || 0), 0)
   const totalDuracion = (servicioSeleccionado?.duracion_minutos ?? 0) +
     serviciosAdicionales.reduce((acc, id) => acc + (barberia?.servicios.find(s => s.idservicio === id)?.duracion_minutos ?? 0), 0)
   const nombreBarberia = barberia?.nombre_negocio ?? 'Barbería'
