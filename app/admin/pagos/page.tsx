@@ -48,7 +48,7 @@ type Retiro = {
 
 const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n)
 const ahoraStr = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
-const fmtFecha = (f: string) => new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+const fmtFecha = (f: string) => new Date(f.length === 10 ? f + 'T12:00:00' : f).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
 
 const hoy = () => new Date().toISOString().split('T')[0]
 

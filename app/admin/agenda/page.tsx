@@ -27,10 +27,11 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, UserCheck, MoreHorizontal } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, UserCheck, MoreHorizontal, Phone, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { Textarea } from '@/components/ui/textarea'
+import Link from 'next/link'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ type Turno = {
   hora_fin: string
   estado: 'pendiente' | 'confirmado' | 'atendido' | 'cobrado' | 'ausente' | 'cancelado' | 'archivado'
   servicio: { nombre_servicio: string; precio: number; duracion_minutos: number }
-  cliente?: { persona: { nombre_completo: string } }
+  cliente?: { idcliente: number; persona: { nombre_completo: string; telefono?: string } }
   barbero: { idusuario: number; persona: { nombre_completo: string } }
 }
 
@@ -396,14 +397,50 @@ export default function AgendaPage() {
                                           </AvatarFallback>
                                         </Avatar>
                                         <div>
-                                          <p className="font-medium text-sm">{t.cliente?.persona.nombre_completo ?? 'Sin cliente'}</p>
+                                          <div className="flex items-center gap-2">
+                                            <p className="font-medium text-sm">{t.cliente?.persona.nombre_completo ?? 'Sin cliente'}</p>
+                                            {t.cliente && (
+                                              <Link href={`/admin/clientes?q=${encodeURIComponent(t.cliente.persona.nombre_completo)}`}
+                                                className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-0.5"
+                                                title="Ver en clientes">
+                                                <ExternalLink className="size-3" />
+                                              </Link>
+                                            )}
+                                          </div>
                                           <p className="text-xs text-muted-foreground">
                                             {t.servicio.nombre_servicio} · {t.hora_inicio.slice(0,5)}–{t.hora_fin.slice(0,5)} · {t.barbero?.persona?.nombre_completo ?? '—'}
                                           </p>
+                                          {t.cliente?.persona.telefono && (
+                                            <a href={`tel:${t.cliente.persona.telefono}`}
+                                              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-0.5">
+                                              <Phone className="size-3" />
+                                              {t.cliente.persona.telefono}
+                                            </a>
+                                          )}
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Badge variant="outline" className={status.color}>{status.label}</Badge>
+                                        {/* Botón de acción principal según estado */}
+                                        {t.estado === 'pendiente' && (
+                                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                            onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
+                                            <CheckCircle className="size-3" />Confirmar
+                                          </Button>
+                                        )}
+                                        {t.estado === 'confirmado' && (
+                                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                            onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                                            <UserCheck className="size-3" />Atendido
+                                          </Button>
+                                        )}
+                                        {t.estado === 'atendido' && (
+                                          <Link href="/admin/pagos">
+                                            <Button size="sm" className="h-7 text-xs gap-1">
+                                              <CheckCircle className="size-3" />Cobrar
+                                            </Button>
+                                          </Link>
+                                        )}
                                         {!['archivado', 'cancelado', 'cobrado'].includes(t.estado) && (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>

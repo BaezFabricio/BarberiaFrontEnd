@@ -252,7 +252,8 @@ export default function Landing() {
 
   const fechasDisponibles = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() + i)
-    return { value: d.toISOString().split('T')[0], label: d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }), dayName: d.toLocaleDateString('es-AR', { weekday: 'long' }) }
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0')
+    return { value: `${y}-${m}-${day}`, label: d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }), dayName: d.toLocaleDateString('es-AR', { weekday: 'long' }) }
   }).filter(d => d.dayName !== 'domingo')
 
   const categoriasServicio = useMemo(() => {

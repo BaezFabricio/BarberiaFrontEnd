@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AdminHeader } from '@/components/admin/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,10 +48,11 @@ type Inactivo = {
   persona: { nombre_completo: string; telefono: string; correo_electronico: string | null }
 }
 
-export default function ClientesPage() {
+function ClientesPageInner() {
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<'todos' | 'inactivos'>('todos')
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda, setBusqueda] = useState(searchParams.get('q') ?? '')
   const [filtro, setFiltro] = useState<'all' | 'nuevos'>('all')
   const [clienteHistorial, setClienteHistorial] = useState<Cliente | null>(null)
   const [turnos, setTurnos] = useState<Turno[]>([])
@@ -188,7 +190,8 @@ export default function ClientesPage() {
   const getInitials = (n: string) => n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2)
   const formatFecha = (f: string | null) => {
     if (!f) return '—'
-    const d = new Date(f)
+    const s = f.length === 10 ? f + 'T12:00:00' : f
+    const d = new Date(s)
     return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
@@ -545,5 +548,13 @@ export default function ClientesPage() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+export default function ClientesPage() {
+  return (
+    <Suspense>
+      <ClientesPageInner />
+    </Suspense>
   )
 }
