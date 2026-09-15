@@ -442,7 +442,7 @@ export default function AgendaPage() {
                                           </Link>
                                         )}
                                         {t.estado === 'ausente' && (
-                                          <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)] hover:shadow-[0_0_14px_rgba(16,185,129,0.9)] transition-all"
+                                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                                             onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
                                             <UserCheck className="size-3" />Sí fue atendido
                                           </Button>
