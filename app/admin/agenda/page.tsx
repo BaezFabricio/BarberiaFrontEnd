@@ -423,20 +423,20 @@ export default function AgendaPage() {
                                         <Badge variant="outline" className={status.color}>{status.label}</Badge>
                                         {/* Botón de acción principal según estado */}
                                         {t.estado === 'pendiente' && (
-                                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                          <Button size="sm" className="h-7 text-xs gap-1 bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] hover:shadow-[0_0_14px_rgba(59,130,246,0.9)] transition-all"
                                             onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
                                             <CheckCircle className="size-3" />Confirmar
                                           </Button>
                                         )}
                                         {t.estado === 'confirmado' && (
-                                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                          <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)] hover:shadow-[0_0_14px_rgba(16,185,129,0.9)] transition-all"
                                             onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
-                                            <UserCheck className="size-3" />Atendido
+                                            <UserCheck className="size-3" />Marcar atendido
                                           </Button>
                                         )}
                                         {t.estado === 'atendido' && (
                                           <Link href="/admin/pagos">
-                                            <Button size="sm" className="h-7 text-xs gap-1">
+                                            <Button size="sm" className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.6)] hover:shadow-[0_0_14px_rgba(245,158,11,0.9)] transition-all">
                                               <CheckCircle className="size-3" />Cobrar
                                             </Button>
                                           </Link>
