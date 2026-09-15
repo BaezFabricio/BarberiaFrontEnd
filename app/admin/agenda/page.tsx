@@ -441,6 +441,12 @@ export default function AgendaPage() {
                                             </Button>
                                           </Link>
                                         )}
+                                        {t.estado === 'ausente' && (
+                                          <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)] hover:shadow-[0_0_14px_rgba(16,185,129,0.9)] transition-all"
+                                            onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                                            <UserCheck className="size-3" />Sí fue atendido
+                                          </Button>
+                                        )}
                                         {!['archivado', 'cancelado', 'cobrado'].includes(t.estado) && (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
