@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Search, MoreHorizontal, Pencil, Power, Clock, DollarSign, Package, Trash2 } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Pencil, Power, Clock, DollarSign, Package, Trash2, Star } from 'lucide-react'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { ImageUpload } from '@/components/ui/image-upload'
@@ -38,11 +38,16 @@ export default function ServiciosPage() {
   const [error, setError] = useState('')
   const [confirmarEliminar, setConfirmarEliminar] = useState<Servicio | null>(null)
   const [eliminando, setEliminando] = useState(false)
+  const [idDestacado, setIdDestacado] = useState<number | null>(null)
 
   const cargar = async () => {
     try {
-      const data = await api.get<Servicio[]>('/servicios')
+      const [data, stats] = await Promise.all([
+        api.get<Servicio[]>('/servicios'),
+        api.get<{ idservicio_destacado: number | null }>('/servicios/stats'),
+      ])
       setServicios(data)
+      setIdDestacado(stats.idservicio_destacado)
     } catch { setServicios([]) }
   }
 
@@ -207,7 +212,14 @@ export default function ServiciosPage() {
                 <div className="flex flex-1 flex-col justify-between p-3">
                   <div className="flex items-start justify-between gap-1">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold leading-tight">{s.nombre_servicio}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-bold leading-tight">{s.nombre_servicio}</p>
+                        {idDestacado === s.idservicio && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500 shrink-0">
+                            <Star className="size-2.5 fill-amber-500" />Más pedido
+                          </span>
+                        )}
+                      </div>
                       {s.descripcion && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{s.descripcion}</p>}
                     </div>
                     <DropdownMenu>
