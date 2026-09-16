@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AdminHeader } from '@/components/admin/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -52,7 +53,8 @@ const fmtFecha = (f: string) => new Date(f.length === 10 ? f + 'T12:00:00' : f).
 
 const hoy = () => new Date().toISOString().split('T')[0]
 
-export default function PagosPage() {
+function PagosInner() {
+  const searchParams = useSearchParams()
   const [pagos, setPagos] = useState<Pago[]>([])
   const [pendientes, setPendientes] = useState<Turno[]>([])
   const [resumen, setResumen] = useState<Resumen>({ total: 0, efectivo: 0, transferencia: 0, tarjeta: 0, cantidad: 0 })
@@ -116,10 +118,31 @@ export default function PagosPage() {
   const cargarRetiros = () => api.get<Retiro[]>('/retiros').then(setRetiros).catch(() => {})
 
   useEffect(() => {
-    cargarPendientes(); cargarProductos(); cargarRetiros()
+    const cobrarParam = searchParams.get('cobrar')
+    const idAgendaCobrar = cobrarParam ? Number(cobrarParam) : null
+
+    if (idAgendaCobrar) {
+      api.get<Turno[]>('/pagos/turnos-pendientes')
+        .then(lista => {
+          setPendientes(lista)
+          const turno = lista.find(t => t.idagenda === idAgendaCobrar)
+          if (turno) {
+            setTurnoSel(turno)
+            setMonto(String(turno.servicio.precio))
+            setMetodo('efectivo')
+            setError('')
+            setModal(true)
+          }
+        })
+        .catch(() => setPendientes([]))
+    } else {
+      cargarPendientes()
+    }
+
+    cargarProductos(); cargarRetiros()
     api.get<BarberoItem[]>('/barberos').then(setBarberosList).catch(() => {})
     api.get<ServicioItem[]>('/servicios').then(setServiciosList).catch(() => {})
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const registrarRetiro = async () => {
     setGuardandoRetiro(true); setErrorRetiro('')
@@ -690,5 +713,13 @@ export default function PagosPage() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+export default function PagosPage() {
+  return (
+    <Suspense>
+      <PagosInner />
+    </Suspense>
   )
 }

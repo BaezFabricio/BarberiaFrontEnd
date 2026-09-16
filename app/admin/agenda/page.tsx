@@ -86,11 +86,6 @@ export default function AgendaPage() {
   const [turnoCancelar, setTurnoCancelar] = useState<Turno | null>(null)
   const [motivoCancelar, setMotivoCancelar] = useState('')
   const [guardandoCancelar, setGuardandoCancelar] = useState(false)
-  const [modalCobro, setModalCobro] = useState(false)
-  const [turnoCobro, setTurnoCobro] = useState<Turno | null>(null)
-  const [montoCobro, setMontoCobro] = useState('')
-  const [metodoCobro, setMetodoCobro] = useState('efectivo')
-  const [guardandoCobro, setGuardandoCobro] = useState(false)
 
   // Datos de la API
   const [turnos, setTurnos] = useState<Turno[]>([])
@@ -183,24 +178,6 @@ export default function AgendaPage() {
       await api.patch(`/turnos/${idagenda}/estado`, { estado })
       cargarTurnos()
     } catch (err) { console.error(err) }
-  }
-
-  const abrirCobro = (turno: Turno) => {
-    setTurnoCobro(turno)
-    setMontoCobro(String(turno.servicio.precio))
-    setMetodoCobro('efectivo')
-    setModalCobro(true)
-  }
-
-  const confirmarCobro = async () => {
-    if (!turnoCobro) return
-    setGuardandoCobro(true)
-    try {
-      await api.post('/pagos', { idagenda: turnoCobro.idagenda, monto_pago: Number(montoCobro), metodo_pago: metodoCobro })
-      setModalCobro(false)
-      cargarTurnos()
-    } catch (err) { console.error(err) }
-    finally { setGuardandoCobro(false) }
   }
 
   const abrirCancelacion = (turno: Turno) => {
@@ -413,9 +390,9 @@ export default function AgendaPage() {
                                 const status = statusConfig[t.estado] ?? statusConfig.pendiente
                                 return (
                                   <div key={t.idagenda} className={cn('rounded-lg border p-3', status.bgColor)}>
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                       <div className="flex items-center gap-3">
-                                        <Avatar className="size-8">
+                                        <Avatar className="size-8 shrink-0">
                                           <AvatarFallback className="text-xs">
                                             {getInitials(t.cliente?.persona.nombre_completo ?? 'SC')}
                                           </AvatarFallback>
@@ -443,7 +420,7 @@ export default function AgendaPage() {
                                           )}
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap pl-11 sm:pl-0">
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Badge variant="outline" className={status.color}>{status.label}</Badge>
@@ -483,12 +460,13 @@ export default function AgendaPage() {
                                         {t.estado === 'atendido' && (
                                           <Tooltip>
                                             <TooltipTrigger asChild>
-                                              <Button size="sm" className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.6)] hover:shadow-[0_0_14px_rgba(245,158,11,0.9)] transition-all"
-                                                onClick={() => abrirCobro(t)}>
-                                                <CheckCircle className="size-3" />Cobrar
-                                              </Button>
+                                              <Link href={`/admin/pagos?cobrar=${t.idagenda}`}>
+                                                <Button size="sm" className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.6)] hover:shadow-[0_0_14px_rgba(245,158,11,0.9)] transition-all">
+                                                  <CheckCircle className="size-3" />Cobrar
+                                                </Button>
+                                              </Link>
                                             </TooltipTrigger>
-                                            <TooltipContent>Registrar el cobro de este turno</TooltipContent>
+                                            <TooltipContent>Ir a pagos y cobrar este turno</TooltipContent>
                                           </Tooltip>
                                         )}
                                         {t.estado === 'ausente' && (
@@ -675,45 +653,6 @@ export default function AgendaPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal cobro directo */}
-      <Dialog open={modalCobro} onOpenChange={v => { if (!guardandoCobro) setModalCobro(v) }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Registrar cobro</DialogTitle>
-            <DialogDescription>
-              {turnoCobro && `${turnoCobro.cliente?.persona.nombre_completo ?? 'Sin cliente'} — ${turnoCobro.servicio.nombre_servicio}`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Monto</Label>
-              <Input
-                type="number"
-                value={montoCobro}
-                onChange={e => setMontoCobro(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Método de pago</Label>
-              <Select value={metodoCobro} onValueChange={setMetodoCobro}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="efectivo">Efectivo</SelectItem>
-                  <SelectItem value="transferencia">Transferencia</SelectItem>
-                  <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalCobro(false)} disabled={guardandoCobro}>Cancelar</Button>
-            <Button onClick={confirmarCobro} disabled={guardandoCobro || !montoCobro}>
-              {guardandoCobro ? 'Registrando...' : 'Confirmar cobro'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }
