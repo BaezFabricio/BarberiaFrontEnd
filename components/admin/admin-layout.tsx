@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { authApi, api } from '@/lib/api'
@@ -392,6 +393,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   return (
+    <TooltipProvider delayDuration={400}>
     <SidebarProvider defaultOpen={typeof window !== 'undefined' && window.innerWidth >= 768} style={{ overflow: 'hidden', maxWidth: '100vw' }}>
       <AdminRouteTransition />
       <AdminSidebar />
@@ -400,5 +402,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </SidebarInset>
       <BottomNav />
     </SidebarProvider>
+    </TooltipProvider>
   )
 }

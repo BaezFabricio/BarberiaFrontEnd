@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, UserCheck, MoreHorizontal, Phone, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
@@ -420,40 +421,77 @@ export default function AgendaPage() {
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className={status.color}>{status.label}</Badge>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge variant="outline" className={status.color}>{status.label}</Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top">
+                                            {t.estado === 'pendiente' && 'El turno fue reservado pero aún no confirmado'}
+                                            {t.estado === 'confirmado' && 'El cliente confirmó su asistencia'}
+                                            {t.estado === 'atendido' && 'El cliente fue atendido, falta cobrar'}
+                                            {t.estado === 'cobrado' && 'Turno atendido y cobrado'}
+                                            {t.estado === 'ausente' && 'El cliente no se presentó al turno'}
+                                            {t.estado === 'cancelado' && 'El turno fue cancelado'}
+                                          </TooltipContent>
+                                        </Tooltip>
                                         {/* Botón de acción principal según estado */}
                                         {t.estado === 'pendiente' && (
-                                          <Button size="sm" className="h-7 text-xs gap-1 bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] hover:shadow-[0_0_14px_rgba(59,130,246,0.9)] transition-all"
-                                            onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
-                                            <CheckCircle className="size-3" />Confirmar
-                                          </Button>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button size="sm" className="h-7 text-xs gap-1 bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] hover:shadow-[0_0_14px_rgba(59,130,246,0.9)] transition-all"
+                                                onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
+                                                <CheckCircle className="size-3" />Confirmar
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Confirmar que el cliente asistirá al turno</TooltipContent>
+                                          </Tooltip>
                                         )}
                                         {t.estado === 'confirmado' && (
-                                          <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)] hover:shadow-[0_0_14px_rgba(16,185,129,0.9)] transition-all"
-                                            onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
-                                            <UserCheck className="size-3" />Marcar atendido
-                                          </Button>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)] hover:shadow-[0_0_14px_rgba(16,185,129,0.9)] transition-all"
+                                                onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                                                <UserCheck className="size-3" />Marcar atendido
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Marcar que el cliente ya fue atendido. Luego podrás cobrar.</TooltipContent>
+                                          </Tooltip>
                                         )}
                                         {t.estado === 'atendido' && (
-                                          <Link href="/admin/pagos">
-                                            <Button size="sm" className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.6)] hover:shadow-[0_0_14px_rgba(245,158,11,0.9)] transition-all">
-                                              <CheckCircle className="size-3" />Cobrar
-                                            </Button>
-                                          </Link>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Link href="/admin/pagos">
+                                                <Button size="sm" className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_8px_rgba(245,158,11,0.6)] hover:shadow-[0_0_14px_rgba(245,158,11,0.9)] transition-all">
+                                                  <CheckCircle className="size-3" />Cobrar
+                                                </Button>
+                                              </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Ir al módulo de pagos para registrar el cobro</TooltipContent>
+                                          </Tooltip>
                                         )}
                                         {t.estado === 'ausente' && (
-                                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                                            onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
-                                            <UserCheck className="size-3" />Sí fue atendido
-                                          </Button>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                                onClick={() => cambiarEstado(t.idagenda, 'atendido')}>
+                                                <UserCheck className="size-3" />Sí fue atendido
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>El cliente sí vino pero se olvidó de marcar. Pasa a atendido para poder cobrar.</TooltipContent>
+                                          </Tooltip>
                                         )}
                                         {!['archivado', 'cancelado', 'cobrado'].includes(t.estado) && (
                                           <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <Button variant="ghost" size="icon" className="size-7">
-                                                <MoreHorizontal className="size-4" />
-                                              </Button>
-                                            </DropdownMenuTrigger>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <DropdownMenuTrigger asChild>
+                                                  <Button variant="ghost" size="icon" className="size-7">
+                                                    <MoreHorizontal className="size-4" />
+                                                  </Button>
+                                                </DropdownMenuTrigger>
+                                              </TooltipTrigger>
+                                              <TooltipContent>Más opciones: cambiar estado, cancelar turno</TooltipContent>
+                                            </Tooltip>
                                             <DropdownMenuContent align="end">
                                               {t.estado !== 'confirmado' && t.estado !== 'atendido' && (
                                                 <DropdownMenuItem onClick={() => cambiarEstado(t.idagenda, 'confirmado')}>
