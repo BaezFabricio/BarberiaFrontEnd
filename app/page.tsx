@@ -343,33 +343,29 @@ export default function Landing() {
         <div className="space-y-2">
           {suspension.nombre_negocio && <h1 className="text-2xl font-bold">{suspension.nombre_negocio}</h1>}
           <p className="text-muted-foreground max-w-sm">Las reservas online están temporalmente fuera de servicio.</p>
-          {(suspension.whatsapp_negocio || suspension.telefono) && (
-            <p className="text-sm text-muted-foreground">Para sacar turno, contactanos directamente:</p>
-          )}
         </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          {suspension.whatsapp_negocio && (
+        {suspension.whatsapp_negocio && (
+          <div className="flex flex-col gap-3 w-full max-w-xs">
             <a href={`https://wa.me/${suspension.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 text-white px-4 py-3 text-sm font-medium transition-colors">
               WhatsApp
             </a>
-          )}
-          {suspension.telefono && (
-            <a href={`tel:${suspension.telefono}`}
-              className="flex items-center justify-center gap-2 rounded-lg border border-border hover:bg-muted px-4 py-3 text-sm font-medium transition-colors">
-              {suspension.telefono}
-            </a>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     )
   }
 
   if (errorBarberia || !barberia) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
-        <AlertCircle className="size-12 text-destructive" />
-        <h1 className="text-xl font-semibold">{errorBarberia || 'Barbería no encontrada'}</h1>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 p-8 text-center animate-in fade-in-0 zoom-in-95 duration-500">
+        <div className="relative flex items-center justify-center">
+          <span className="absolute size-16 rounded-full bg-muted animate-ping opacity-75" />
+          <div className="relative size-16 rounded-full bg-muted flex items-center justify-center">
+            <Scissors className="size-8 text-muted-foreground" />
+          </div>
+        </div>
+        <h1 className="text-xl font-semibold">Barbería fuera de servicio</h1>
       </div>
     )
   }
