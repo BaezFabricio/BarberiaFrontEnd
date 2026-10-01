@@ -56,10 +56,12 @@ function getSubdominio(): string | null {
   return process.env.NEXT_PUBLIC_DEV_SUBDOMINIO ?? null
 }
 
+type Suspension = { suspendida?: boolean; nombre_negocio?: string; telefono?: string | null; whatsapp_negocio?: string | null }
+
 async function publicFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BACKEND_URL}/api/public${path}`)
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error ?? 'Error del servidor')
+  if (!res.ok) throw Object.assign(new Error(data.error ?? 'Error del servidor'), data as Suspension)
   return data as T
 }
 
@@ -109,6 +111,7 @@ export default function Landing() {
   const [barberia, setBarberia] = useState<BarberiaPub | null>(null)
   const [loadingBarberia, setLoadingBarberia] = useState(true)
   const [errorBarberia, setErrorBarberia] = useState('')
+  const [suspension, setSuspension] = useState<Suspension | null>(null)
 
   const [buscarServicio, setBuscarServicio] = useState('')
   const [categoriaServicio, setCategoriaServicio] = useState<string | null>(null)
@@ -171,7 +174,11 @@ export default function Landing() {
           setReseñasBarberos(map)
         })
       })
-      .catch(err => { setErrorBarberia(err.message); setLoadingBarberia(false) })
+      .catch((err: Error & Suspension) => {
+        setErrorBarberia(err.message)
+        if (err.suspendida) setSuspension(err)
+        setLoadingBarberia(false)
+      })
 
     const qc = sub ? `/carrusel?subdominio=${sub}` : '/carrusel'
     publicFetch<{ idimagen: number; url: string }[]>(qc)
@@ -327,12 +334,42 @@ export default function Landing() {
     )
   }
 
+  if (suspension) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center bg-background">
+        <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+          <Scissors className="size-8 text-muted-foreground" />
+        </div>
+        <div className="space-y-2">
+          {suspension.nombre_negocio && <h1 className="text-2xl font-bold">{suspension.nombre_negocio}</h1>}
+          <p className="text-muted-foreground max-w-sm">Las reservas online están temporalmente fuera de servicio.</p>
+          {(suspension.whatsapp_negocio || suspension.telefono) && (
+            <p className="text-sm text-muted-foreground">Para sacar turno, contactanos directamente:</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          {suspension.whatsapp_negocio && (
+            <a href={`https://wa.me/${suspension.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 text-white px-4 py-3 text-sm font-medium transition-colors">
+              WhatsApp
+            </a>
+          )}
+          {suspension.telefono && (
+            <a href={`tel:${suspension.telefono}`}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border hover:bg-muted px-4 py-3 text-sm font-medium transition-colors">
+              {suspension.telefono}
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   if (errorBarberia || !barberia) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
         <AlertCircle className="size-12 text-destructive" />
-        <h1 className="text-xl font-semibold">Barbería no encontrada</h1>
-        <p className="text-muted-foreground">{errorBarberia}</p>
+        <h1 className="text-xl font-semibold">{errorBarberia || 'Barbería no encontrada'}</h1>
       </div>
     )
   }
