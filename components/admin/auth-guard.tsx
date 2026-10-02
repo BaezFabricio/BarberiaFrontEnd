@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
 
 function getRol(): string | null {
   try {
@@ -22,7 +23,17 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     } else if (rol === 'barbero') {
       router.replace('/barbero')
     } else if (rol === 'admin' || rol === 'owner') {
-      setVerificado(true)
+      // El rol sale del JWT, que es local: no sabe si la cuenta fue suspendida.
+      // Se confirma contra el backend antes de mostrar el panel, para que no
+      // aparezca un instante y después salte a /bloqueado.
+      api.get('/mi-barberia')
+        .then(() => setVerificado(true))
+        .catch((e: Error & { suspendida?: boolean }) => {
+          // Si está suspendida, apiRequest ya está navegando a /bloqueado y no
+          // hay que renderizar nada. Ante cualquier otro error se deja entrar:
+          // cada página maneja sus propios fallos.
+          if (!e.suspendida) setVerificado(true)
+        })
     } else {
       router.replace('/login')
     }
