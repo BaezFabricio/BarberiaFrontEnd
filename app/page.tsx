@@ -379,22 +379,15 @@ export default function Landing() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">{barberia.nombre_negocio}</h1>
           <p className="text-muted-foreground max-w-sm">Las reservas online están temporalmente deshabilitadas.</p>
-          <p className="text-sm text-muted-foreground">Para sacar turno, contactanos directamente:</p>
         </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          {barberia.whatsapp_negocio && (
+        {barberia.whatsapp_negocio && (
+          <div className="flex flex-col gap-3 w-full max-w-xs">
             <a href={`https://wa.me/${barberia.whatsapp_negocio.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 text-white px-4 py-3 text-sm font-medium transition-colors">
               WhatsApp
             </a>
-          )}
-          {barberia.telefono && (
-            <a href={`tel:${barberia.telefono}`}
-              className="flex items-center justify-center gap-2 rounded-lg border border-border hover:bg-muted px-4 py-3 text-sm font-medium transition-colors">
-              {barberia.telefono}
-            </a>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     )
   }
