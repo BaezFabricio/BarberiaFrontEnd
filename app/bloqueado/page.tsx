@@ -9,6 +9,12 @@ import { Card, CardContent } from '@/components/ui/card'
 const SOPORTE_EMAIL = 'fabriciobaezz11@gmail.com'
 const ASUNTO = 'Panel bloqueado — solicitud de reactivación'
 
+// Se abre el compose de Gmail en el navegador en vez de un mailto:, que lanza
+// el cliente de correo del sistema (Outlook y su popup de confirmación).
+const GMAIL_COMPOSE =
+  `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(SOPORTE_EMAIL)}` +
+  `&su=${encodeURIComponent(ASUNTO)}`
+
 export default function Bloqueado() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
@@ -26,7 +32,7 @@ export default function Bloqueado() {
           </div>
 
           <Button asChild className="w-full">
-            <a href={`mailto:${SOPORTE_EMAIL}?subject=${encodeURIComponent(ASUNTO)}`}>
+            <a href={GMAIL_COMPOSE} target="_blank" rel="noopener noreferrer">
               <Mail className="size-4" />
               Contactar a soporte
             </a>
