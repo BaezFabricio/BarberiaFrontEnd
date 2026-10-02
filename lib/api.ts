@@ -47,6 +47,10 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
         window.location.href = '/login';
         throw new Error('Sesión expirada');
     }
+    if (res.status === 403 && data.suspendida) {
+        window.location.href = '/bloqueado';
+        throw new Error(data.error ?? 'Panel bloqueado');
+    }
     if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
     return data as T;
 }
