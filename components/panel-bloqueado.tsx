@@ -4,8 +4,9 @@ import { Lock, Mail, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
-// Esta pantalla no debe llamar a la API: el backend está devolviendo 403 y
-// cualquier fetch volvería a redirigir acá, en loop.
+// Se renderiza en lugar del panel, sin navegar: la URL no cambia y no existe
+// una ruta suelta a la que se pueda entrar a mano.
+// No debe llamar a la API: el backend está devolviendo 403.
 const SOPORTE_EMAIL = 'fabriciobaezz11@gmail.com'
 const SOPORTE_TEL_INTL = '5493704011885' // 549 + área + número, igual criterio que formatearNumeroAR
 const SOPORTE_TEL_VISIBLE = '3704 01-1885'
@@ -20,7 +21,7 @@ const GMAIL_COMPOSE =
 const WHATSAPP_URL =
   `https://wa.me/${SOPORTE_TEL_INTL}?text=${encodeURIComponent('Hola, el panel está bloqueado y necesito reactivarlo.')}`
 
-export default function Bloqueado() {
+export function PanelBloqueado() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
       <Card className="w-full max-w-md">

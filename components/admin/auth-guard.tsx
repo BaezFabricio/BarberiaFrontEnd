@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+import { PanelBloqueado } from '@/components/panel-bloqueado'
 
 function getRol(): string | null {
   try {
@@ -15,6 +16,7 @@ function getRol(): string | null {
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [verificado, setVerificado] = useState(false)
+  const [bloqueado, setBloqueado] = useState(false)
 
   useEffect(() => {
     const rol = getRol()
@@ -25,20 +27,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     } else if (rol === 'admin' || rol === 'owner') {
       // El rol sale del JWT, que es local: no sabe si la cuenta fue suspendida.
       // Se confirma contra el backend antes de mostrar el panel, para que no
-      // aparezca un instante y después salte a /bloqueado.
+      // aparezca un instante y después se reemplace.
       api.get('/mi-barberia')
         .then(() => setVerificado(true))
         .catch((e: Error & { suspendida?: boolean }) => {
-          // Si está suspendida, apiRequest ya está navegando a /bloqueado y no
-          // hay que renderizar nada. Ante cualquier otro error se deja entrar:
-          // cada página maneja sus propios fallos.
-          if (!e.suspendida) setVerificado(true)
+          // Ante cualquier otro error se deja entrar: cada página maneja sus
+          // propios fallos y no conviene dejar el panel en blanco por una
+          // caída de red.
+          if (e.suspendida) setBloqueado(true)
+          else setVerificado(true)
         })
     } else {
       router.replace('/login')
     }
   }, [router])
 
+  if (bloqueado) return <PanelBloqueado />
   if (!verificado) return null
 
   return <>{children}</>

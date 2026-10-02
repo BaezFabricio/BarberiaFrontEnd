@@ -47,10 +47,9 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
         window.location.href = '/login';
         throw new Error('Sesión expirada');
     }
+    // No se navega a ninguna ruta: se marca el error y los guards renderizan la
+    // pantalla de bloqueo en el lugar, dejando la URL como está.
     if (res.status === 403 && data.suspendida) {
-        window.location.href = '/bloqueado';
-        // Se marca el error para que los guards no rendericen el panel mientras
-        // el navegador todavía está yendo a /bloqueado.
         throw Object.assign(new Error(data.error ?? 'Panel bloqueado'), { suspendida: true });
     }
     if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
