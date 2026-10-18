@@ -113,7 +113,7 @@ export default function BarberosPage() {
     setError('')
     if (!form.nombre_completo || !form.correo_electronico || !form.telefono || !form.password)
       return setError('Todos los campos obligatorios deben estar completos.')
-    if (form.password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
+    if (form.password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.')
     setLoading(true)
     try {
       await api.post('/barberos', { ...form, comision_porcentaje: form.comision_porcentaje ? Number(form.comision_porcentaje) : 0 })
@@ -150,7 +150,7 @@ export default function BarberosPage() {
   }
 
   const cambiarPassword = async () => {
-    if (!passBarb || nuevaPass.length < 6) return setErrorPass('La contraseña debe tener al menos 6 caracteres.')
+    if (!passBarb || nuevaPass.length < 8) return setErrorPass('La contraseña debe tener al menos 8 caracteres.')
     setLoadingPass(true); setErrorPass('')
     try {
       await api.patch(`/barberos/${passBarb.idusuario}/password`, { password: nuevaPass })
@@ -440,7 +440,7 @@ export default function BarberosPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Contraseña *</Label>
-                <Input type="password" placeholder="Mín. 6 caracteres" value={form.password}
+                <Input type="password" placeholder="Mín. 8 caracteres" value={form.password}
                   onChange={e => setForm(p => ({ ...p, password: e.target.value }))} required />
               </div>
               <div className="space-y-1.5">
@@ -640,14 +640,14 @@ export default function BarberosPage() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>Nueva contraseña</Label>
-              <Input type="password" placeholder="Mín. 6 caracteres" value={nuevaPass}
+              <Input type="password" placeholder="Mín. 8 caracteres" value={nuevaPass}
                 onChange={e => setNuevaPass(e.target.value)} />
             </div>
             {errorPass && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errorPass}</p>}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setModalPass(false)}>Cancelar</Button>
-            <Button onClick={cambiarPassword} disabled={loadingPass || nuevaPass.length < 6}>
+            <Button onClick={cambiarPassword} disabled={loadingPass || nuevaPass.length < 8}>
               {loadingPass ? 'Guardando...' : 'Cambiar contraseña'}
             </Button>
           </DialogFooter>

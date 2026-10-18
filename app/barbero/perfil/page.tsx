@@ -35,7 +35,7 @@ export default function PerfilBarbero() {
     e.preventDefault()
     setError(''); setExito(false)
     if (form.password_nueva !== form.confirmar) return setError('Las contraseñas nuevas no coinciden.')
-    if (form.password_nueva.length < 6) return setError('La contraseña nueva debe tener al menos 6 caracteres.')
+    if (form.password_nueva.length < 8) return setError('La contraseña nueva debe tener al menos 8 caracteres.')
     setLoading(true)
     try {
       await api.put('/mi-perfil/password', { password_actual: form.password_actual, password_nueva: form.password_nueva })
@@ -114,7 +114,7 @@ export default function PerfilBarbero() {
             </div>
             <div className="space-y-1.5">
               <Label>Contraseña nueva</Label>
-              <Input type="password" placeholder="Mín. 6 caracteres" value={form.password_nueva}
+              <Input type="password" placeholder="Mín. 8 caracteres" value={form.password_nueva}
                 onChange={e => setForm(p => ({ ...p, password_nueva: e.target.value }))} required />
             </div>
             <div className="space-y-1.5">

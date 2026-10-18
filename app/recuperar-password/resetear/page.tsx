@@ -70,7 +70,7 @@ function ResetearForm() {
                   value={form.password_nueva}
                   onChange={e => setForm(p => ({ ...p, password_nueva: e.target.value }))}
                   required
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
               <div className="space-y-1.5">

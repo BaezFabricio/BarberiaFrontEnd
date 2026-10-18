@@ -89,8 +89,8 @@ export default function PerfilAdmin() {
     setEstadoPass(null)
     if (passForm.password_nueva !== passForm.confirmar)
       return setEstadoPass({ tipo: 'error', mensaje: 'Las contraseñas nuevas no coinciden.' })
-    if (passForm.password_nueva.length < 6)
-      return setEstadoPass({ tipo: 'error', mensaje: 'La contraseña nueva debe tener al menos 6 caracteres.' })
+    if (passForm.password_nueva.length < 8)
+      return setEstadoPass({ tipo: 'error', mensaje: 'La contraseña nueva debe tener al menos 8 caracteres.' })
     setLoadingPass(true)
     try {
       await api.put('/mi-perfil/password', { password_actual: passForm.password_actual, password_nueva: passForm.password_nueva })
@@ -268,7 +268,7 @@ export default function PerfilAdmin() {
                       <Label>Contraseña nueva</Label>
                       <Input
                         type="password"
-                        placeholder="Mín. 6 caracteres"
+                        placeholder="Mín. 8 caracteres"
                         value={passForm.password_nueva}
                         onChange={e => setPassForm(p => ({ ...p, password_nueva: e.target.value }))}
                         required
